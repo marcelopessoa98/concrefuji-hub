@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Employee, Client, OvertimeRecord, Notification, User, SystemSettings } from '@/types';
 
 interface AppContextType {
@@ -6,6 +6,13 @@ interface AppContextType {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
   isAuthenticated: boolean;
+  
+  // Users Management
+  users: User[];
+  addUser: (user: Omit<User, 'id'>) => void;
+  updateUser: (id: string, user: Partial<User>) => void;
+  deleteUser: (id: string) => void;
+  loginUser: (email: string, password: string) => User | null;
   
   // Employees
   employees: Employee[];
@@ -124,7 +131,28 @@ const sampleNotifications: Notification[] = [
   },
 ];
 
+// Sample users for demo
+const sampleUsers: User[] = [
+  {
+    id: '1',
+    email: 'admin@concrefuji.com.br',
+    password: 'admin123',
+    firstName: 'Administrador',
+    lastName: 'Sistema',
+    role: 'admin',
+  },
+  {
+    id: '2',
+    email: 'estagiario@concrefuji.com.br',
+    password: 'estagiario123',
+    firstName: 'Estagiário',
+    lastName: 'Teste',
+    role: 'employee',
+  },
+];
+
 export function AppProvider({ children }: { children: ReactNode }) {
+  const [users, setUsers] = useState<User[]>(sampleUsers);
   const [currentUser, setCurrentUser] = useState<User | null>({
     id: '1',
     email: 'admin@concrefuji.com.br',
@@ -143,6 +171,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
 
   const isAuthenticated = currentUser !== null;
+
+  // Users management
+  const addUser = (user: Omit<User, 'id'>) => {
+    const newUser: User = {
+      ...user,
+      id: Date.now().toString(),
+    };
+    setUsers((prev) => [...prev, newUser]);
+  };
+
+  const updateUser = (id: string, user: Partial<User>) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, ...user } : u))
+    );
+    // Update currentUser if it's the same user
+    if (currentUser?.id === id) {
+      setCurrentUser((prev) => prev ? { ...prev, ...user } : null);
+    }
+  };
+
+  const deleteUser = (id: string) => {
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+  };
+
+  const loginUser = (email: string, password: string): User | null => {
+    const user = users.find((u) => u.email === email && u.password === password);
+    if (user) {
+      setCurrentUser(user);
+      return user;
+    }
+    return null;
+  };
 
   const addEmployee = (employee: Omit<Employee, 'id' | 'createdAt'>) => {
     const newEmployee: Employee = {
@@ -274,6 +334,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentUser,
         setCurrentUser,
         isAuthenticated,
+        users,
+        addUser,
+        updateUser,
+        deleteUser,
+        loginUser,
         employees,
         addEmployee,
         updateEmployee,

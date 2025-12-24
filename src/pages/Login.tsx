@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import logo from '@/assets/logo.png';
 
 const Login = () => {
-  const { setCurrentUser } = useApp();
+  const { loginUser } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -24,32 +25,16 @@ const Login = () => {
 
     setIsLoading(true);
 
-    // Simulate login - in production, this would be a real API call
+    // Simulate delay for UX
     setTimeout(() => {
-      // Demo credentials
-      if (email === 'admin@concrefuji.com.br' && password === 'admin123') {
-        setCurrentUser({
-          id: '1',
-          email: 'admin@concrefuji.com.br',
-          firstName: 'Administrador',
-          lastName: 'Sistema',
-          role: 'admin',
-        });
-        toast.success('Login realizado com sucesso!');
-      } else if (email === 'estagiario@concrefuji.com.br' && password === 'estagiario123') {
-        setCurrentUser({
-          id: '2',
-          email: 'estagiario@concrefuji.com.br',
-          firstName: 'Estagiário',
-          lastName: 'Teste',
-          role: 'employee',
-        });
+      const user = loginUser(email, password);
+      if (user) {
         toast.success('Login realizado com sucesso!');
       } else {
         toast.error('Email ou senha inválidos');
       }
       setIsLoading(false);
-    }, 1000);
+    }, 500);
   };
 
   return (
@@ -57,10 +42,7 @@ const Login = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-primary flex items-center justify-center mb-4">
-            <span className="text-primary-foreground font-bold text-2xl">C</span>
-          </div>
-          <h1 className="text-3xl font-display font-bold text-foreground">CONCREFUJI</h1>
+          <img src={logo} alt="CONCREFUJI" className="h-12 mx-auto mb-4" />
           <p className="text-muted-foreground mt-2">Sistema de Gestão Interna</p>
         </div>
 
