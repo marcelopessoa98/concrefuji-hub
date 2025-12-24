@@ -119,23 +119,6 @@ const Login = () => {
               )}
             </Button>
           </form>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 pt-6 border-t border-border">
-            <p className="text-sm text-muted-foreground text-center mb-3">
-              Credenciais de demonstração:
-            </p>
-            <div className="space-y-2 text-xs text-muted-foreground">
-              <div className="p-2 rounded-lg bg-muted/50">
-                <p><strong>Admin:</strong> admin@concrefuji.com.br</p>
-                <p><strong>Senha:</strong> admin123</p>
-              </div>
-              <div className="p-2 rounded-lg bg-muted/50">
-                <p><strong>Estagiário:</strong> estagiario@concrefuji.com.br</p>
-                <p><strong>Senha:</strong> estagiario123</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
