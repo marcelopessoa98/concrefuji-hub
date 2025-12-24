@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, ArrowLeft, Send } from 'lucide-react';
+import { ArrowLeft, Send, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import logo from '@/assets/logo.png';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -34,10 +35,7 @@ const ForgotPassword = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-primary flex items-center justify-center mb-4">
-            <span className="text-primary-foreground font-bold text-2xl">C</span>
-          </div>
-          <h1 className="text-3xl font-display font-bold text-foreground">CONCREFUJI</h1>
+          <img src={logo} alt="CONCREFUJI" className="h-12 mx-auto mb-4" />
           <p className="text-muted-foreground mt-2">Sistema de Gestão Interna</p>
         </div>
 

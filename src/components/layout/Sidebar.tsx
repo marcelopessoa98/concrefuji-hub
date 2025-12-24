@@ -12,11 +12,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
-  X
+  X,
+  UserCog
 } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import logo from '@/assets/logo.png';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -25,6 +27,7 @@ const menuItems = [
   { icon: Clock, label: 'Horas Extras', path: '/overtime' },
   { icon: FileText, label: 'Relatórios', path: '/reports' },
   { icon: Bell, label: 'Notificações', path: '/notifications' },
+  { icon: UserCog, label: 'Usuários', path: '/users', adminOnly: true },
   { icon: Settings, label: 'Configurações', path: '/settings' },
 ];
 
@@ -47,13 +50,14 @@ export function Sidebar() {
         "flex items-center gap-3 px-4 py-6 border-b border-sidebar-border",
         collapsed && "justify-center"
       )}>
-        <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
-          <span className="text-accent-foreground font-bold text-lg">C</span>
-        </div>
-        {!collapsed && (
+        {collapsed ? (
+          <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
+            <span className="text-accent-foreground font-bold text-lg">C</span>
+          </div>
+        ) : (
           <div className="animate-fade-in">
-            <h1 className="font-display font-bold text-lg text-sidebar-foreground">CONCREFUJI</h1>
-            <p className="text-xs text-sidebar-foreground/60">Sistema de Gestão</p>
+            <img src={logo} alt="CONCREFUJI" className="h-8 w-auto" />
+            <p className="text-xs text-sidebar-foreground/60 mt-1">Sistema de Gestão</p>
           </div>
         )}
       </div>
@@ -89,32 +93,34 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {menuItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                "sidebar-link relative",
-                isActive && "active",
-                collapsed && "justify-center px-2"
-              )}
-            >
-              <item.icon className="w-5 h-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-              {item.path === '/notifications' && unreadCount > 0 && (
-                <span className={cn(
-                  "notification-badge",
-                  collapsed ? "top-0 right-0" : "ml-auto"
-                )}>
-                  {unreadCount}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+        {menuItems
+          .filter((item) => !item.adminOnly || currentUser?.role === 'admin')
+          .map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "sidebar-link relative",
+                  isActive && "active",
+                  collapsed && "justify-center px-2"
+                )}
+              >
+                <item.icon className="w-5 h-5 shrink-0" />
+                {!collapsed && <span>{item.label}</span>}
+                {item.path === '/notifications' && unreadCount > 0 && (
+                  <span className={cn(
+                    "notification-badge",
+                    collapsed ? "top-0 right-0" : "ml-auto"
+                  )}>
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
       </nav>
 
       {/* Logout */}
@@ -164,13 +170,19 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed lg:relative z-40 h-screen bg-sidebar flex flex-col transition-all duration-300 ease-in-out",
+          "fixed z-40 h-screen bg-sidebar flex flex-col transition-all duration-300 ease-in-out",
           collapsed ? "w-[72px]" : "w-64",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         <SidebarContent />
       </aside>
+      
+      {/* Spacer for fixed sidebar on desktop */}
+      <div className={cn(
+        "hidden lg:block shrink-0 transition-all duration-300",
+        collapsed ? "w-[72px]" : "w-64"
+      )} />
     </>
   );
 }
