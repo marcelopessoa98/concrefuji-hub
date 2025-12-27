@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Search, Edit, Trash2, User } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
+import { useEmployees } from '@/hooks/useEmployees';
+import { useAuth } from '@/contexts/AuthContext';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,10 +26,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { format, parseISO } from 'date-fns';
-import { toast } from 'sonner';
 
 const Employees = () => {
-  const { employees, addEmployee, updateEmployee, deleteEmployee } = useApp();
+  const { employees, isLoading, addEmployee, updateEmployee, deleteEmployee } = useEmployees();
+  const { isAdmin } = useAuth();
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
@@ -36,8 +37,10 @@ const Employees = () => {
   
   const [formData, setFormData] = useState({
     name: '',
-    birthDate: '',
+    birth_date: '',
     role: '',
+    department: '',
+    admission_date: '',
   });
 
   const filteredEmployees = employees.filter((emp) =>
@@ -48,20 +51,30 @@ const Employees = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.birthDate || !formData.role) {
-      toast.error('Preencha todos os campos obrigatórios');
+    if (!formData.name || !formData.role || !formData.department || !formData.admission_date) {
       return;
     }
 
     if (editingEmployee) {
-      updateEmployee(editingEmployee, formData);
-      toast.success('Funcionário atualizado com sucesso!');
+      updateEmployee.mutate({
+        id: editingEmployee,
+        name: formData.name,
+        birth_date: formData.birth_date || null,
+        role: formData.role,
+        department: formData.department,
+        admission_date: formData.admission_date,
+      });
     } else {
-      addEmployee(formData);
-      toast.success('Funcionário cadastrado com sucesso!');
+      addEmployee.mutate({
+        name: formData.name,
+        birth_date: formData.birth_date || null,
+        role: formData.role,
+        department: formData.department,
+        admission_date: formData.admission_date,
+      });
     }
 
-    setFormData({ name: '', birthDate: '', role: '' });
+    setFormData({ name: '', birth_date: '', role: '', department: '', admission_date: '' });
     setEditingEmployee(null);
     setIsDialogOpen(false);
   };
@@ -71,8 +84,10 @@ const Employees = () => {
     if (employee) {
       setFormData({
         name: employee.name,
-        birthDate: employee.birthDate,
+        birth_date: employee.birth_date || '',
         role: employee.role,
+        department: employee.department,
+        admission_date: employee.admission_date,
       });
       setEditingEmployee(id);
       setIsDialogOpen(true);
@@ -80,16 +95,25 @@ const Employees = () => {
   };
 
   const handleDelete = (id: string) => {
-    deleteEmployee(id);
+    deleteEmployee.mutate(id);
     setDeleteConfirm(null);
-    toast.success('Funcionário removido com sucesso!');
   };
 
   const openNewDialog = () => {
-    setFormData({ name: '', birthDate: '', role: '' });
+    setFormData({ name: '', birth_date: '', role: '', department: '', admission_date: '' });
     setEditingEmployee(null);
     setIsDialogOpen(true);
   };
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -102,65 +126,85 @@ const Employees = () => {
               Gerencie o cadastro de funcionários
             </p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="accent" onClick={openNewDialog}>
-                <Plus className="w-4 h-4 mr-2" />
-                Novo Funcionário
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <form onSubmit={handleSubmit}>
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingEmployee ? 'Editar Funcionário' : 'Novo Funcionário'}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {editingEmployee
-                      ? 'Atualize os dados do funcionário'
-                      : 'Preencha os dados para cadastrar um novo funcionário'}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nome Completo *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Digite o nome completo"
-                    />
+          {isAdmin && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="accent" onClick={openNewDialog}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Funcionário
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <form onSubmit={handleSubmit}>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingEmployee ? 'Editar Funcionário' : 'Novo Funcionário'}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {editingEmployee
+                        ? 'Atualize os dados do funcionário'
+                        : 'Preencha os dados para cadastrar um novo funcionário'}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Nome Completo *</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="Digite o nome completo"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="birth_date">Data de Nascimento</Label>
+                      <Input
+                        id="birth_date"
+                        type="date"
+                        value={formData.birth_date}
+                        onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Função *</Label>
+                      <Input
+                        id="role"
+                        value={formData.role}
+                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                        placeholder="Ex: Pedreiro, Engenheiro, etc."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="department">Departamento *</Label>
+                      <Input
+                        id="department"
+                        value={formData.department}
+                        onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                        placeholder="Ex: Obras, Administrativo"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="admission_date">Data de Admissão *</Label>
+                      <Input
+                        id="admission_date"
+                        type="date"
+                        value={formData.admission_date}
+                        onChange={(e) => setFormData({ ...formData, admission_date: e.target.value })}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="birthDate">Data de Nascimento *</Label>
-                    <Input
-                      id="birthDate"
-                      type="date"
-                      value={formData.birthDate}
-                      onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Função *</Label>
-                    <Input
-                      id="role"
-                      value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                      placeholder="Ex: Pedreiro, Engenheiro, etc."
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" variant="accent">
-                    {editingEmployee ? 'Atualizar' : 'Cadastrar'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" variant="accent">
+                      {editingEmployee ? 'Atualizar' : 'Cadastrar'}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Search */}
@@ -181,15 +225,16 @@ const Employees = () => {
               <thead>
                 <tr className="border-b border-border bg-muted/50">
                   <th className="text-left p-4 font-medium text-muted-foreground">Funcionário</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Data de Nascimento</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Departamento</th>
                   <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Função</th>
-                  <th className="text-right p-4 font-medium text-muted-foreground">Ações</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Admissão</th>
+                  {isAdmin && <th className="text-right p-4 font-medium text-muted-foreground">Ações</th>}
                 </tr>
               </thead>
               <tbody>
                 {filteredEmployees.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={5} className="p-8 text-center text-muted-foreground">
                       Nenhum funcionário encontrado
                     </td>
                   </tr>
@@ -208,27 +253,32 @@ const Employees = () => {
                         </div>
                       </td>
                       <td className="p-4 hidden sm:table-cell text-foreground">
-                        {format(parseISO(employee.birthDate), 'dd/MM/yyyy')}
+                        {employee.department}
                       </td>
                       <td className="p-4 hidden md:table-cell text-foreground">{employee.role}</td>
-                      <td className="p-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(employee.id)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteConfirm(employee.id)}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
+                      <td className="p-4 hidden lg:table-cell text-foreground">
+                        {format(parseISO(employee.admission_date), 'dd/MM/yyyy')}
                       </td>
+                      {isAdmin && (
+                        <td className="p-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(employee.id)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteConfirm(employee.id)}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
