@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { OvertimeEntry } from '@/types';
 import { toast } from 'sonner';
+import { calculateOvertimeHours, formatOvertimeMinutes, getDayOfWeekName } from '@/lib/overtime';
 
 interface OvertimeFormEntry {
   id: string;
@@ -89,14 +90,15 @@ const Overtime = () => {
     );
   };
 
-  const calculateTotalHours = (start: string, end: string) => {
-    if (!start || !end) return '0h 0m';
-    const startDate = new Date(`2024-01-01T${start}`);
-    const endDate = new Date(`2024-01-01T${end}`);
-    const diff = endDate.getTime() - startDate.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes}m`;
+  const calculateTotalOvertimeHours = (date: string, start: string, end: string) => {
+    if (!date || !start || !end) return '0h 0m';
+    const overtimeMinutes = calculateOvertimeHours(date, start, end);
+    return formatOvertimeMinutes(overtimeMinutes);
+  };
+
+  const getEntryDayInfo = (date: string) => {
+    if (!date) return '';
+    return getDayOfWeekName(date);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -329,9 +331,16 @@ const Overtime = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Total de Horas</Label>
-                    <div className="h-10 px-3 py-2 rounded-lg bg-muted text-foreground font-medium flex items-center">
-                      {calculateTotalHours(entry.startTime, entry.endTime)}
+                    <Label>Dia da Semana</Label>
+                    <div className="h-10 px-3 py-2 rounded-lg bg-muted/50 text-muted-foreground font-medium flex items-center">
+                      {getEntryDayInfo(entry.date) || '-'}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Total Hora Extra</Label>
+                    <div className="h-10 px-3 py-2 rounded-lg bg-primary/10 text-primary font-bold flex items-center">
+                      {calculateTotalOvertimeHours(entry.date, entry.startTime, entry.endTime)}
                     </div>
                   </div>
 
