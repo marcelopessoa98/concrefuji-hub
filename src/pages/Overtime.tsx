@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Plus, Trash2, Save, Clock, User, Building2 } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
+import { useEmployees } from '@/hooks/useEmployees';
+import { useClients } from '@/hooks/useClients';
+import { useOvertimeRecords } from '@/hooks/useOvertimeRecords';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { OvertimeEntry } from '@/types';
-import { toast } from 'sonner';
 import { calculateOvertimeHours, formatOvertimeMinutes, getDayOfWeekName } from '@/lib/overtime';
+import { toast } from 'sonner';
 
 interface OvertimeFormEntry {
   id: string;
@@ -28,7 +29,10 @@ interface OvertimeFormEntry {
 }
 
 const Overtime = () => {
-  const { employees, clients, addOvertimeRecord } = useApp();
+  const { employees } = useEmployees();
+  const { clients } = useClients();
+  const { addOvertimeRecord } = useOvertimeRecords();
+  
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
@@ -121,29 +125,26 @@ const Overtime = () => {
     const employee = employees.find((e) => e.id === selectedEmployee);
     if (!employee) return;
 
-    const formattedEntries: OvertimeEntry[] = entries.map((entry) => {
+    const formattedEntries = entries.map((entry) => {
       const project = clients.find((c) => c.id === entry.projectId);
       return {
-        id: entry.id,
         date: entry.date,
-        projectId: entry.projectId,
-        projectName: project?.projectName || '',
-        startTime: entry.startTime,
-        endTime: entry.endTime,
+        project_id: entry.projectId,
+        project_name: project?.project_name || '',
+        start_time: entry.startTime,
+        end_time: entry.endTime,
         type: entry.type,
-        observation: entry.observation,
+        observation: entry.observation || null,
       };
     });
 
-    addOvertimeRecord({
-      employeeId: selectedEmployee,
-      employeeName: employee.name,
+    addOvertimeRecord.mutate({
+      employee_id: selectedEmployee,
+      employee_name: employee.name,
       month: selectedMonth,
       year: selectedYear,
       entries: formattedEntries,
     });
-
-    toast.success('Horas extras registradas com sucesso!');
     
     // Reset form
     setSelectedEmployee('');
@@ -258,7 +259,7 @@ const Overtime = () => {
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label>Data *</Label>
                     <Input
@@ -283,7 +284,7 @@ const Overtime = () => {
                       <SelectContent>
                         {clients.map((client) => (
                           <SelectItem key={client.id} value={client.id}>
-                            {client.projectName}
+                            {client.project_name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -304,6 +305,13 @@ const Overtime = () => {
                         <SelectItem value="banco_de_horas">Banco de Horas</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Dia da Semana</Label>
+                    <div className="h-10 px-3 py-2 rounded-lg bg-muted/50 text-muted-foreground font-medium flex items-center">
+                      {getEntryDayInfo(entry.date) || '-'}
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -331,20 +339,13 @@ const Overtime = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Dia da Semana</Label>
-                    <div className="h-10 px-3 py-2 rounded-lg bg-muted/50 text-muted-foreground font-medium flex items-center">
-                      {getEntryDayInfo(entry.date) || '-'}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
                     <Label>Total Hora Extra</Label>
                     <div className="h-10 px-3 py-2 rounded-lg bg-primary/10 text-primary font-bold flex items-center">
                       {calculateTotalOvertimeHours(entry.date, entry.startTime, entry.endTime)}
                     </div>
                   </div>
 
-                  <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+                  <div className="space-y-2 sm:col-span-2 lg:col-span-4">
                     <Label>Observação</Label>
                     <Textarea
                       value={entry.observation}
@@ -360,9 +361,9 @@ const Overtime = () => {
 
           {/* Submit */}
           <div className="flex justify-end">
-            <Button type="submit" variant="accent" size="lg">
+            <Button type="submit" variant="accent" size="lg" disabled={addOvertimeRecord.isPending}>
               <Save className="w-4 h-4 mr-2" />
-              Salvar Horas Extras
+              {addOvertimeRecord.isPending ? 'Salvando...' : 'Salvar Horas Extras'}
             </Button>
           </div>
         </form>
