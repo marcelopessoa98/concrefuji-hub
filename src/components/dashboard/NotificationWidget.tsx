@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom';
 import { AlertTriangle, AlertCircle, Info, ArrowRight } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
+import { useNotifications } from '@/hooks/useNotifications';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 export function NotificationWidget() {
-  const { notifications } = useApp();
-  const recentNotifications = notifications.filter((n) => !n.read).slice(0, 3);
+  const { notifications } = useNotifications();
+  const recentNotifications = notifications.filter((n) => !n.is_read).slice(0, 3);
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -64,7 +64,7 @@ export function NotificationWidget() {
                 <p className="font-medium text-foreground text-sm">{notification.title}</p>
                 <p className="text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {format(parseISO(notification.createdAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                  {format(parseISO(notification.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
                 </p>
               </div>
             </div>

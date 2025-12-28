@@ -15,7 +15,8 @@ import {
   X,
   UserCog
 } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import logo from '@/assets/logo.png';
@@ -35,13 +36,16 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
-  const { currentUser, notifications, setCurrentUser } = useApp();
+  const { user, authUser, isAdmin, signOut } = useAuth();
+  const { unreadCount } = useNotifications();
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const handleLogout = () => {
-    setCurrentUser(null);
+  const handleLogout = async () => {
+    await signOut();
   };
+
+  const firstName = authUser?.firstName || user?.email?.split('@')[0] || '';
+  const lastName = authUser?.lastName || '';
+  const initials = (firstName[0]?.toUpperCase() || '') + (lastName[0]?.toUpperCase() || '');
 
   const SidebarContent = () => (
     <>
@@ -63,7 +67,7 @@ export function Sidebar() {
       </div>
 
       {/* User info */}
-      {currentUser && (
+      {user && (
         <div className={cn(
           "px-4 py-4 border-b border-sidebar-border",
           collapsed && "px-2"
@@ -74,16 +78,16 @@ export function Sidebar() {
           )}>
             <div className="w-10 h-10 rounded-full bg-sidebar-accent flex items-center justify-center">
               <span className="text-sidebar-accent-foreground font-medium">
-                {currentUser.firstName[0]}{currentUser.lastName[0]}
+                {initials}
               </span>
             </div>
             {!collapsed && (
               <div className="animate-fade-in">
                 <p className="text-sm font-medium text-sidebar-foreground">
-                  {currentUser.firstName} {currentUser.lastName}
+                  {firstName} {lastName}
                 </p>
                 <p className="text-xs text-sidebar-foreground/60 capitalize">
-                  {currentUser.role === 'admin' ? 'Administrador' : 'Funcionário'}
+                  {isAdmin ? 'Administrador' : 'Funcionário'}
                 </p>
               </div>
             )}
@@ -94,7 +98,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {menuItems
-          .filter((item) => !item.adminOnly || currentUser?.role === 'admin')
+          .filter((item) => !item.adminOnly || isAdmin)
           .map((item) => {
             const isActive = location.pathname === item.path;
             return (
