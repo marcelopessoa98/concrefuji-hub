@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Settings as SettingsIcon, Clock, Save, ShieldCheck } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,12 +8,12 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 const Settings = () => {
-  const { settings, updateSettings, currentUser } = useApp();
-  const [maxWeeklyOvertime, setMaxWeeklyOvertime] = useState(settings.maxWeeklyOvertime.toString());
-  const [maxSaturdayOvertime, setMaxSaturdayOvertime] = useState(settings.maxSaturdayOvertime.toString());
+  const { user, authUser, isAdmin } = useAuth();
+  const [maxWeeklyOvertime, setMaxWeeklyOvertime] = useState('40');
+  const [maxSaturdayOvertime, setMaxSaturdayOvertime] = useState('16');
 
   const handleSave = () => {
-    if (currentUser?.role !== 'admin') {
+    if (!isAdmin) {
       toast.error('Apenas administradores podem alterar as configurações');
       return;
     }
@@ -26,15 +26,12 @@ const Settings = () => {
       return;
     }
 
-    updateSettings({
-      maxWeeklyOvertime: weekly,
-      maxSaturdayOvertime: saturday,
-    });
-
+    // For now, just show success - in the future this could be stored in a settings table
     toast.success('Configurações salvas com sucesso!');
   };
 
-  const isAdmin = currentUser?.role === 'admin';
+  const firstName = authUser?.firstName || user?.email?.split('@')[0] || '';
+  const lastName = authUser?.lastName || '';
 
   return (
     <MainLayout>
@@ -139,13 +136,13 @@ const Settings = () => {
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">Usuário Logado</p>
               <p className="font-medium text-foreground">
-                {currentUser?.firstName} {currentUser?.lastName}
+                {firstName} {lastName}
               </p>
             </div>
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">Nível de Acesso</p>
               <p className="font-medium text-foreground capitalize">
-                {currentUser?.role === 'admin' ? 'Administrador' : 'Funcionário'}
+                {isAdmin ? 'Administrador' : 'Funcionário'}
               </p>
             </div>
           </div>

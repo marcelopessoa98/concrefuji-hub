@@ -1,14 +1,17 @@
 import { AlertTriangle, AlertCircle, Info, Check, Trash2, Bell } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEmployees } from '@/hooks/useEmployees';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 
 const Notifications = () => {
-  const { notifications, markNotificationAsRead, deleteNotification, clearAllNotifications, currentUser } = useApp();
+  const { notifications, unreadCount, markAsRead, deleteNotification, clearAll } = useNotifications();
+  const { isAdmin } = useAuth();
+  const { employees } = useEmployees();
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -34,24 +37,22 @@ const Notifications = () => {
   };
 
   const handleClearAll = () => {
-    if (currentUser?.role !== 'admin') {
-      toast.error('Apenas administradores podem apagar todas as notificações');
-      return;
-    }
-    clearAllNotifications();
-    toast.success('Todas as notificações foram apagadas');
+    clearAll.mutate();
   };
 
   const handleDelete = (id: string) => {
-    if (currentUser?.role !== 'admin') {
-      toast.error('Apenas administradores podem apagar notificações');
-      return;
-    }
-    deleteNotification(id);
-    toast.success('Notificação apagada');
+    deleteNotification.mutate(id);
   };
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const handleMarkAsRead = (id: string) => {
+    markAsRead.mutate(id);
+  };
+
+  const getEmployeeName = (employeeId: string | null) => {
+    if (!employeeId) return null;
+    const employee = employees.find(e => e.id === employeeId);
+    return employee?.name;
+  };
 
   return (
     <MainLayout>
@@ -71,7 +72,7 @@ const Notifications = () => {
               Alertas sobre limites de horas extras e outras informações importantes
             </p>
           </div>
-          {currentUser?.role === 'admin' && notifications.length > 0 && (
+          {isAdmin && notifications.length > 0 && (
             <Button variant="outline" onClick={handleClearAll}>
               <Trash2 className="w-4 h-4 mr-2" />
               Limpar Todas
@@ -108,57 +109,60 @@ const Notifications = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {notifications.map((notification) => (
-              <div
-                key={notification.id}
-                className={cn(
-                  "flex items-start gap-4 p-4 rounded-xl border transition-all animate-slide-up",
-                  getBackground(notification.type, notification.read)
-                )}
-              >
-                <div className="shrink-0 mt-0.5">
-                  {getIcon(notification.type)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-medium text-foreground">{notification.title}</p>
-                      <p className="text-muted-foreground mt-1">{notification.message}</p>
-                      {notification.employeeName && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                          Funcionário: <strong>{notification.employeeName}</strong>
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {!notification.read && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => markNotificationAsRead(notification.id)}
-                          title="Marcar como lida"
-                        >
-                          <Check className="w-4 h-4 text-success" />
-                        </Button>
-                      )}
-                      {currentUser?.role === 'admin' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(notification.id)}
-                          title="Apagar"
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
+            {notifications.map((notification) => {
+              const employeeName = getEmployeeName(notification.employee_id);
+              return (
+                <div
+                  key={notification.id}
+                  className={cn(
+                    "flex items-start gap-4 p-4 rounded-xl border transition-all animate-slide-up",
+                    getBackground(notification.type, notification.is_read)
+                  )}
+                >
+                  <div className="shrink-0 mt-0.5">
+                    {getIcon(notification.type)}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    {format(parseISO(notification.createdAt), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-medium text-foreground">{notification.title}</p>
+                        <p className="text-muted-foreground mt-1">{notification.message}</p>
+                        {employeeName && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Funcionário: <strong>{employeeName}</strong>
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!notification.is_read && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleMarkAsRead(notification.id)}
+                            title="Marcar como lida"
+                          >
+                            <Check className="w-4 h-4 text-success" />
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(notification.id)}
+                            title="Apagar"
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      {format(parseISO(notification.created_at), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

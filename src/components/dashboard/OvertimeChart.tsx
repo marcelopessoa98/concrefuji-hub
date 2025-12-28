@@ -1,12 +1,12 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { useApp } from '@/contexts/AppContext';
+import { useOvertimeRecords } from '@/hooks/useOvertimeRecords';
 
 interface OvertimeChartProps {
   type: 'employees' | 'projects';
 }
 
 export function OvertimeChart({ type }: OvertimeChartProps) {
-  const { overtimeRecords, clients } = useApp();
+  const { records: overtimeRecords } = useOvertimeRecords();
 
   const calculateHours = (start: string, end: string) => {
     const startDate = new Date(`2024-01-01T${start}`);
@@ -18,11 +18,11 @@ export function OvertimeChart({ type }: OvertimeChartProps) {
     const employeeHours: Record<string, { name: string; hours: number }> = {};
     
     overtimeRecords.forEach((record) => {
-      if (!employeeHours[record.employeeId]) {
-        employeeHours[record.employeeId] = { name: record.employeeName.split(' ')[0], hours: 0 };
+      if (!employeeHours[record.employee_id]) {
+        employeeHours[record.employee_id] = { name: record.employee_name.split(' ')[0], hours: 0 };
       }
-      record.entries.forEach((entry) => {
-        employeeHours[record.employeeId].hours += calculateHours(entry.startTime, entry.endTime);
+      record.entries?.forEach((entry) => {
+        employeeHours[record.employee_id].hours += calculateHours(entry.start_time, entry.end_time);
       });
     });
 
@@ -36,11 +36,12 @@ export function OvertimeChart({ type }: OvertimeChartProps) {
     const projectHours: Record<string, { name: string; hours: number }> = {};
     
     overtimeRecords.forEach((record) => {
-      record.entries.forEach((entry) => {
-        if (!projectHours[entry.projectId]) {
-          projectHours[entry.projectId] = { name: entry.projectName.split(' ')[0], hours: 0 };
+      record.entries?.forEach((entry) => {
+        const projectKey = entry.project_id || entry.project_name;
+        if (!projectHours[projectKey]) {
+          projectHours[projectKey] = { name: entry.project_name.split(' ')[0], hours: 0 };
         }
-        projectHours[entry.projectId].hours += calculateHours(entry.startTime, entry.endTime);
+        projectHours[projectKey].hours += calculateHours(entry.start_time, entry.end_time);
       });
     });
 

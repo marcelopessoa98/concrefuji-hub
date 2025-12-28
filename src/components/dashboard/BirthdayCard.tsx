@@ -1,13 +1,19 @@
 import { Cake, Gift } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
-import { format, parseISO } from 'date-fns';
+import { useEmployees } from '@/hooks/useEmployees';
+import { format, parseISO, getMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function BirthdayCard() {
-  const { getBirthdaysThisMonth } = useApp();
-  const birthdays = getBirthdaysThisMonth();
+  const { employees } = useEmployees();
+  
+  const currentMonth = getMonth(new Date());
+  const currentMonthName = format(new Date(), 'MMMM', { locale: ptBR });
 
-  const currentMonth = format(new Date(), 'MMMM', { locale: ptBR });
+  const birthdays = employees.filter((employee) => {
+    if (!employee.birth_date) return false;
+    const birthMonth = getMonth(parseISO(employee.birth_date));
+    return birthMonth === currentMonth;
+  });
 
   return (
     <div className="bg-card rounded-xl border border-border p-6 animate-slide-up">
@@ -17,7 +23,7 @@ export function BirthdayCard() {
         </div>
         <div>
           <h3 className="font-display font-semibold text-foreground">Aniversariantes</h3>
-          <p className="text-sm text-muted-foreground capitalize">{currentMonth}</p>
+          <p className="text-sm text-muted-foreground capitalize">{currentMonthName}</p>
         </div>
       </div>
 
@@ -28,7 +34,7 @@ export function BirthdayCard() {
       ) : (
         <div className="space-y-3">
           {birthdays.map((employee) => {
-            const birthDate = parseISO(employee.birthDate);
+            const birthDate = parseISO(employee.birth_date!);
             const day = format(birthDate, 'dd');
             
             return (
@@ -45,7 +51,7 @@ export function BirthdayCard() {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-display font-bold text-accent">{day}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{currentMonth}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{currentMonthName}</p>
                 </div>
               </div>
             );

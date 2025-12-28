@@ -14,7 +14,8 @@ import {
   UserCog,
   ChevronDown
 } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,17 +41,20 @@ const menuItems = [
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
-  const { currentUser, notifications, setCurrentUser } = useApp();
+  const { user, authUser, isAdmin, signOut } = useAuth();
+  const { unreadCount } = useNotifications();
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const handleLogout = () => {
-    setCurrentUser(null);
+  const handleLogout = async () => {
+    await signOut();
   };
 
   const filteredMenuItems = menuItems.filter(
-    (item) => !item.adminOnly || currentUser?.role === 'admin'
+    (item) => !item.adminOnly || isAdmin
   );
+
+  const firstName = authUser?.firstName || user?.email?.split('@')[0] || '';
+  const lastName = authUser?.lastName || '';
+  const initials = (firstName[0]?.toUpperCase() || '') + (lastName[0]?.toUpperCase() || '');
 
   return (
     <>
@@ -91,18 +95,18 @@ export function Header() {
 
           {/* User Menu */}
           <div className="flex items-center gap-3">
-            {currentUser && (
+            {user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors">
                     <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center">
                       <span className="text-sidebar-accent-foreground text-sm font-medium">
-                        {currentUser.firstName[0]}{currentUser.lastName[0]}
+                        {initials}
                       </span>
                     </div>
                     <div className="text-left">
                       <p className="text-sm font-medium text-sidebar-foreground">
-                        {currentUser.firstName}
+                        {firstName}
                       </p>
                     </div>
                     <ChevronDown className="w-4 h-4 text-sidebar-foreground/60" />
@@ -111,10 +115,10 @@ export function Header() {
                 <DropdownMenuContent align="end" className="w-48">
                   <div className="px-2 py-1.5">
                     <p className="text-sm font-medium">
-                      {currentUser.firstName} {currentUser.lastName}
+                      {firstName} {lastName}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {currentUser.role === 'admin' ? 'Administrador' : 'Funcionário'}
+                      {isAdmin ? 'Administrador' : 'Funcionário'}
                     </p>
                   </div>
                   <DropdownMenuSeparator />
@@ -168,20 +172,20 @@ export function Header() {
               })}
               
               {/* User info and logout on mobile */}
-              {currentUser && (
+              {user && (
                 <div className="pt-4 mt-4 border-t border-sidebar-border">
                   <div className="flex items-center gap-3 px-3 py-2">
                     <div className="w-10 h-10 rounded-full bg-sidebar-accent flex items-center justify-center">
                       <span className="text-sidebar-accent-foreground font-medium">
-                        {currentUser.firstName[0]}{currentUser.lastName[0]}
+                        {initials}
                       </span>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-sidebar-foreground">
-                        {currentUser.firstName} {currentUser.lastName}
+                        {firstName} {lastName}
                       </p>
                       <p className="text-xs text-sidebar-foreground/60">
-                        {currentUser.role === 'admin' ? 'Administrador' : 'Funcionário'}
+                        {isAdmin ? 'Administrador' : 'Funcionário'}
                       </p>
                     </div>
                   </div>

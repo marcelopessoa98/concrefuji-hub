@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react';
-import { FileText, Download, Printer, Search, User, Building2 } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
+import { FileText, Download, Printer, User, Building2 } from 'lucide-react';
+import { useEmployees } from '@/hooks/useEmployees';
+import { useClients } from '@/hooks/useClients';
+import { useOvertimeRecords } from '@/hooks/useOvertimeRecords';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -18,7 +19,9 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 const Reports = () => {
-  const { employees, clients, overtimeRecords } = useApp();
+  const { employees } = useEmployees();
+  const { clients } = useClients();
+  const { records: overtimeRecords } = useOvertimeRecords();
   const [activeTab, setActiveTab] = useState('employee');
   
   // Employee Report
@@ -81,14 +84,14 @@ const Reports = () => {
     if (!employee) return;
 
     const records = overtimeRecords.filter(
-      (r) => r.employeeId === selectedEmployee && r.month === employeeMonth && r.year === employeeYear
+      (r) => r.employee_id === selectedEmployee && r.month === employeeMonth && r.year === employeeYear
     );
 
-    const allEntries = records.flatMap((r) => r.entries);
+    const allEntries = records.flatMap((r) => r.entries || []);
     const sortedEntries = allEntries.sort((a, b) => a.date.localeCompare(b.date));
 
     const totalHours = sortedEntries.reduce((sum, entry) => {
-      return sum + calculateHours(entry.startTime, entry.endTime);
+      return sum + calculateHours(entry.start_time, entry.end_time);
     }, 0);
 
     setEmployeeReport({
@@ -110,7 +113,7 @@ const Reports = () => {
     if (!client) return;
 
     const allEntries = overtimeRecords.flatMap((r) => 
-      r.entries.filter((e) => e.projectId === selectedClient)
+      (r.entries || []).filter((e) => e.project_id === selectedClient)
     );
 
     const filteredEntries = allEntries.filter((entry) => {
@@ -122,7 +125,7 @@ const Reports = () => {
     const sortedEntries = filteredEntries.sort((a, b) => a.date.localeCompare(b.date));
 
     const totalHours = sortedEntries.reduce((sum, entry) => {
-      return sum + calculateHours(entry.startTime, entry.endTime);
+      return sum + calculateHours(entry.start_time, entry.end_time);
     }, 0);
 
     setProjectReport({
@@ -295,11 +298,11 @@ const Reports = () => {
                               <tr key={entry.id} className="border-b border-border">
                                 <td className="p-3">{format(parseISO(entry.date), 'dd/MM/yyyy')}</td>
                                 <td className="p-3">{getDayName(entry.date)}</td>
-                                <td className="p-3">{entry.projectName}</td>
-                                <td className="p-3">{entry.startTime}</td>
-                                <td className="p-3">{entry.endTime}</td>
+                                <td className="p-3">{entry.project_name}</td>
+                                <td className="p-3">{entry.start_time}</td>
+                                <td className="p-3">{entry.end_time}</td>
                                 <td className="p-3 font-medium">
-                                  {formatHours(calculateHours(entry.startTime, entry.endTime))}
+                                  {formatHours(calculateHours(entry.start_time, entry.end_time))}
                                 </td>
                                 <td className="p-3 text-sm text-muted-foreground">{entry.observation || '-'}</td>
                               </tr>
@@ -332,7 +335,7 @@ const Reports = () => {
                     <SelectContent>
                       {clients.map((client) => (
                         <SelectItem key={client.id} value={client.id}>
-                          {client.projectName}
+                          {client.project_name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -396,8 +399,8 @@ const Reports = () => {
                       Relatório de Horas Extras por Obra
                     </h2>
                     <div className="mt-2 text-muted-foreground">
-                      <p><strong>Obra:</strong> {projectReport.client.projectName}</p>
-                      <p><strong>Cliente:</strong> {projectReport.client.clientName}</p>
+                      <p><strong>Obra:</strong> {projectReport.client.project_name}</p>
+                      <p><strong>Cliente:</strong> {projectReport.client.client_name}</p>
                       <p><strong>Período:</strong> {projectReport.month} de {projectReport.year}</p>
                     </div>
                   </div>
@@ -413,16 +416,22 @@ const Reports = () => {
                           <thead>
                             <tr className="border-b border-border bg-muted/50">
                               <th className="p-3 text-left font-medium text-muted-foreground">Data</th>
-                              <th className="p-3 text-left font-medium text-muted-foreground">Quantidade de Horas</th>
-                              <th className="p-3 text-left font-medium text-muted-foreground">Observações</th>
+                              <th className="p-3 text-left font-medium text-muted-foreground">Dia</th>
+                              <th className="p-3 text-left font-medium text-muted-foreground">Entrada</th>
+                              <th className="p-3 text-left font-medium text-muted-foreground">Saída</th>
+                              <th className="p-3 text-left font-medium text-muted-foreground">Total</th>
+                              <th className="p-3 text-left font-medium text-muted-foreground">Obs.</th>
                             </tr>
                           </thead>
                           <tbody>
                             {projectReport.entries.map((entry: any) => (
                               <tr key={entry.id} className="border-b border-border">
                                 <td className="p-3">{format(parseISO(entry.date), 'dd/MM/yyyy')}</td>
+                                <td className="p-3">{getDayName(entry.date)}</td>
+                                <td className="p-3">{entry.start_time}</td>
+                                <td className="p-3">{entry.end_time}</td>
                                 <td className="p-3 font-medium">
-                                  {formatHours(calculateHours(entry.startTime, entry.endTime))}
+                                  {formatHours(calculateHours(entry.start_time, entry.end_time))}
                                 </td>
                                 <td className="p-3 text-sm text-muted-foreground">{entry.observation || '-'}</td>
                               </tr>
