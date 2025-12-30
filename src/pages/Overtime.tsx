@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Trash2, Save, Clock, User, Building2 } from 'lucide-react';
 import { useEmployees } from '@/hooks/useEmployees';
-import { useClients } from '@/hooks/useClients';
+import { useProjects } from '@/hooks/useProjects';
 import { useOvertimeRecords } from '@/hooks/useOvertimeRecords';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { calculateOvertimeHours, formatOvertimeMinutes, getDayOfWeekName } from '@/lib/overtime';
 import { toast } from 'sonner';
 
@@ -30,7 +31,7 @@ interface OvertimeFormEntry {
 
 const Overtime = () => {
   const { employees } = useEmployees();
-  const { clients } = useClients();
+  const { projects } = useProjects();
   const { addOvertimeRecord } = useOvertimeRecords();
   
   const [selectedEmployee, setSelectedEmployee] = useState('');
@@ -64,6 +65,15 @@ const Overtime = () => {
   ];
 
   const years = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() - 2 + i).toString());
+
+  // Prepare project options for combobox
+  const projectOptions = useMemo(() => {
+    return projects.map((project) => ({
+      value: project.id,
+      label: project.name,
+      sublabel: project.client_name,
+    }));
+  }, [projects]);
 
   const addEntry = () => {
     setEntries([
@@ -126,11 +136,11 @@ const Overtime = () => {
     if (!employee) return;
 
     const formattedEntries = entries.map((entry) => {
-      const project = clients.find((c) => c.id === entry.projectId);
+      const project = projects.find((p) => p.id === entry.projectId);
       return {
         date: entry.date,
         project_id: entry.projectId,
-        project_name: project?.project_name || '',
+        project_name: project?.name || '',
         start_time: entry.startTime,
         end_time: entry.endTime,
         type: entry.type,
@@ -274,21 +284,14 @@ const Overtime = () => {
                       <Building2 className="w-4 h-4" />
                       Local (Obra) *
                     </Label>
-                    <Select
+                    <Combobox
+                      options={projectOptions}
                       value={entry.projectId}
                       onValueChange={(value) => updateEntry(entry.id, 'projectId', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a obra" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.project_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Digite para buscar..."
+                      searchPlaceholder="Buscar obra..."
+                      emptyText="Nenhuma obra encontrada."
+                    />
                   </div>
 
                   <div className="space-y-2">
