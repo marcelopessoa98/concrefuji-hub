@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, parseISO, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { calculateOvertimeHours, formatOvertimeMinutes } from '@/lib/overtime';
 
 const Reports = () => {
   const { employees } = useEmployees();
@@ -62,16 +63,12 @@ const Reports = () => {
     return days[dayIndex];
   };
 
-  const calculateHours = (start: string, end: string) => {
-    const startDate = new Date(`2024-01-01T${start}`);
-    const endDate = new Date(`2024-01-01T${end}`);
-    return (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+  const calculateEntryOvertimeMinutes = (entry: any) => {
+    return calculateOvertimeHours(entry.date, entry.start_time, entry.end_time);
   };
 
-  const formatHours = (hours: number) => {
-    const h = Math.floor(hours);
-    const m = Math.round((hours - h) * 60);
-    return `${h}h ${m}m`;
+  const formatHours = (minutes: number) => {
+    return formatOvertimeMinutes(minutes);
   };
 
   const generateEmployeeReport = () => {
@@ -90,8 +87,8 @@ const Reports = () => {
     const allEntries = records.flatMap((r) => r.entries || []);
     const sortedEntries = allEntries.sort((a, b) => a.date.localeCompare(b.date));
 
-    const totalHours = sortedEntries.reduce((sum, entry) => {
-      return sum + calculateHours(entry.start_time, entry.end_time);
+    const totalMinutes = sortedEntries.reduce((sum, entry) => {
+      return sum + calculateEntryOvertimeMinutes(entry);
     }, 0);
 
     setEmployeeReport({
@@ -99,7 +96,7 @@ const Reports = () => {
       month: months.find((m) => m.value === employeeMonth)?.label,
       year: employeeYear,
       entries: sortedEntries,
-      totalHours,
+      totalMinutes,
     });
   };
 
@@ -124,8 +121,8 @@ const Reports = () => {
 
     const sortedEntries = filteredEntries.sort((a, b) => a.date.localeCompare(b.date));
 
-    const totalHours = sortedEntries.reduce((sum, entry) => {
-      return sum + calculateHours(entry.start_time, entry.end_time);
+    const totalMinutes = sortedEntries.reduce((sum, entry) => {
+      return sum + calculateEntryOvertimeMinutes(entry);
     }, 0);
 
     setProjectReport({
@@ -133,7 +130,7 @@ const Reports = () => {
       month: months.find((m) => m.value === projectMonth)?.label,
       year: projectYear,
       entries: sortedEntries,
-      totalHours,
+      totalMinutes,
     });
   };
 
@@ -353,7 +350,7 @@ const Reports = () => {
                                 <td className="p-3">{entry.start_time}</td>
                                 <td className="p-3">{entry.end_time}</td>
                                 <td className="p-3 font-medium">
-                                  {formatHours(calculateHours(entry.start_time, entry.end_time))}
+                                  {formatHours(calculateEntryOvertimeMinutes(entry))}
                                 </td>
                                 <td className="p-3 text-sm text-muted-foreground">{entry.observation || '-'}</td>
                               </tr>
@@ -363,7 +360,7 @@ const Reports = () => {
                       </div>
                       <div className="mt-6 pt-4 border-t border-border">
                         <p className="text-lg font-display font-bold text-foreground">
-                          Total de Horas Extras: {formatHours(employeeReport.totalHours)}
+                          Total de Horas Extras: {formatHours(employeeReport.totalMinutes)}
                         </p>
                       </div>
                     </>
@@ -482,7 +479,7 @@ const Reports = () => {
                                 <td className="p-3">{entry.start_time}</td>
                                 <td className="p-3">{entry.end_time}</td>
                                 <td className="p-3 font-medium">
-                                  {formatHours(calculateHours(entry.start_time, entry.end_time))}
+                                  {formatHours(calculateEntryOvertimeMinutes(entry))}
                                 </td>
                                 <td className="p-3 text-sm text-muted-foreground">{entry.observation || '-'}</td>
                               </tr>
@@ -492,7 +489,7 @@ const Reports = () => {
                       </div>
                       <div className="mt-6 pt-4 border-t border-border">
                         <p className="text-lg font-display font-bold text-foreground">
-                          Total de Horas Extras: {formatHours(projectReport.totalHours)}
+                          Total de Horas Extras: {formatHours(projectReport.totalMinutes)}
                         </p>
                       </div>
                     </>
