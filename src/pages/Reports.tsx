@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { FileText, Download, Printer, User, Building2 } from 'lucide-react';
 import { useEmployees } from '@/hooks/useEmployees';
-import { useClients } from '@/hooks/useClients';
+import { useProjects } from '@/hooks/useProjects';
 import { useOvertimeRecords } from '@/hooks/useOvertimeRecords';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 
 const Reports = () => {
   const { employees } = useEmployees();
-  const { clients } = useClients();
+  const { projects } = useProjects();
   const { records: overtimeRecords } = useOvertimeRecords();
   const [activeTab, setActiveTab] = useState('employee');
   
@@ -31,7 +31,7 @@ const Reports = () => {
   const [employeeReport, setEmployeeReport] = useState<any>(null);
 
   // Project Report
-  const [selectedClient, setSelectedClient] = useState('');
+  const [selectedProject, setSelectedProject] = useState('');
   const [projectMonth, setProjectMonth] = useState('');
   const [projectYear, setProjectYear] = useState(new Date().getFullYear().toString());
   const [projectReport, setProjectReport] = useState<any>(null);
@@ -104,16 +104,16 @@ const Reports = () => {
   };
 
   const generateProjectReport = () => {
-    if (!selectedClient || !projectMonth || !projectYear) {
+    if (!selectedProject || !projectMonth || !projectYear) {
       toast.error('Selecione a obra, mês e ano');
       return;
     }
 
-    const client = clients.find((c) => c.id === selectedClient);
-    if (!client) return;
+    const project = projects.find((p) => p.id === selectedProject);
+    if (!project) return;
 
     const allEntries = overtimeRecords.flatMap((r) => 
-      (r.entries || []).filter((e) => e.project_id === selectedClient)
+      (r.entries || []).filter((e) => e.project_id === selectedProject)
     );
 
     const filteredEntries = allEntries.filter((entry) => {
@@ -129,7 +129,7 @@ const Reports = () => {
     }, 0);
 
     setProjectReport({
-      client,
+      project,
       month: months.find((m) => m.value === projectMonth)?.label,
       year: projectYear,
       entries: sortedEntries,
@@ -137,33 +137,84 @@ const Reports = () => {
     });
   };
 
-  const handlePrint = (ref: React.RefObject<HTMLDivElement>) => {
+  const handlePrint = (ref: React.RefObject<HTMLDivElement>, forPdf: boolean = false) => {
     if (ref.current) {
       const printWindow = window.open('', '_blank');
       if (printWindow) {
+        const content = ref.current.innerHTML;
         printWindow.document.write(`
+          <!DOCTYPE html>
           <html>
             <head>
               <title>Relatório CONCREFUJI</title>
+              <meta charset="UTF-8">
               <style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-                th { background-color: #2d3748; color: white; }
-                tr:nth-child(even) { background-color: #f9fafb; }
-                .header { margin-bottom: 20px; }
-                .header h1 { color: #2d3748; margin-bottom: 10px; }
-                .total { margin-top: 20px; font-weight: bold; font-size: 18px; }
-                @media print { body { -webkit-print-color-adjust: exact; } }
+                * { box-sizing: border-box; }
+                body { 
+                  font-family: Arial, sans-serif; 
+                  padding: 40px; 
+                  margin: 0;
+                  color: #1a1a1a;
+                  line-height: 1.5;
+                }
+                .header { margin-bottom: 30px; }
+                .header h2 { 
+                  color: #1e40af; 
+                  margin-bottom: 15px; 
+                  font-size: 24px;
+                  border-bottom: 2px solid #1e40af;
+                  padding-bottom: 10px;
+                }
+                .header p { margin: 5px 0; font-size: 14px; }
+                .header strong { color: #374151; }
+                table { 
+                  width: 100%; 
+                  border-collapse: collapse; 
+                  margin-top: 25px;
+                  font-size: 12px;
+                }
+                th { 
+                  background-color: #1e40af !important; 
+                  color: white !important; 
+                  padding: 12px 8px; 
+                  text-align: left;
+                  font-weight: 600;
+                }
+                td { 
+                  border: 1px solid #d1d5db; 
+                  padding: 10px 8px; 
+                }
+                tr:nth-child(even) { background-color: #f3f4f6 !important; }
+                .total-section {
+                  margin-top: 25px;
+                  padding-top: 15px;
+                  border-top: 2px solid #1e40af;
+                }
+                .total-section p {
+                  font-size: 18px;
+                  font-weight: bold;
+                  color: #1e40af;
+                }
+                @media print { 
+                  body { 
+                    -webkit-print-color-adjust: exact !important; 
+                    print-color-adjust: exact !important;
+                  }
+                  @page { margin: 20mm; }
+                }
               </style>
             </head>
             <body>
-              ${ref.current.innerHTML}
+              ${content.replace('mt-6 pt-4 border-t border-border', 'total-section')}
+              <script>
+                window.onload = function() {
+                  ${forPdf ? 'setTimeout(function() { window.print(); }, 100);' : 'window.print();'}
+                };
+              </script>
             </body>
           </html>
         `);
         printWindow.document.close();
-        printWindow.print();
       }
     }
   };
@@ -252,11 +303,11 @@ const Reports = () => {
             {employeeReport && (
               <div className="space-y-4">
                 <div className="flex items-center justify-end gap-2">
-                  <Button variant="outline" onClick={() => handlePrint(employeeReportRef)}>
+                  <Button variant="outline" onClick={() => handlePrint(employeeReportRef, false)}>
                     <Printer className="w-4 h-4 mr-2" />
                     Imprimir
                   </Button>
-                  <Button variant="outline" onClick={() => handlePrint(employeeReportRef)}>
+                  <Button variant="outline" onClick={() => handlePrint(employeeReportRef, true)}>
                     <Download className="w-4 h-4 mr-2" />
                     Salvar PDF
                   </Button>
@@ -328,14 +379,14 @@ const Reports = () => {
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label>Obra *</Label>
-                  <Select value={selectedClient} onValueChange={setSelectedClient}>
+                  <Select value={selectedProject} onValueChange={setSelectedProject}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.project_name}
+                      {projects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -383,11 +434,11 @@ const Reports = () => {
             {projectReport && (
               <div className="space-y-4">
                 <div className="flex items-center justify-end gap-2">
-                  <Button variant="outline" onClick={() => handlePrint(projectReportRef)}>
+                  <Button variant="outline" onClick={() => handlePrint(projectReportRef, false)}>
                     <Printer className="w-4 h-4 mr-2" />
                     Imprimir
                   </Button>
-                  <Button variant="outline" onClick={() => handlePrint(projectReportRef)}>
+                  <Button variant="outline" onClick={() => handlePrint(projectReportRef, true)}>
                     <Download className="w-4 h-4 mr-2" />
                     Salvar PDF
                   </Button>
@@ -399,8 +450,8 @@ const Reports = () => {
                       Relatório de Horas Extras por Obra
                     </h2>
                     <div className="mt-2 text-muted-foreground">
-                      <p><strong>Obra:</strong> {projectReport.client.project_name}</p>
-                      <p><strong>Cliente:</strong> {projectReport.client.client_name}</p>
+                      <p><strong>Obra:</strong> {projectReport.project.name}</p>
+                      <p><strong>Endereço:</strong> {projectReport.project.address || '-'}</p>
                       <p><strong>Período:</strong> {projectReport.month} de {projectReport.year}</p>
                     </div>
                   </div>
