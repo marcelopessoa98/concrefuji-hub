@@ -194,7 +194,7 @@ export type Database = {
             foreignKeyName: "overtime_entries_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "clients"
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
