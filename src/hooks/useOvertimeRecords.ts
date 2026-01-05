@@ -114,6 +114,43 @@ export function useOvertimeRecords() {
     },
   });
 
+  const updateOvertimeEntry = useMutation({
+    mutationFn: async (entry: Partial<OvertimeEntry> & { id: string }) => {
+      const { id, ...updateData } = entry;
+      const { error } = await supabase
+        .from('overtime_entries')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['overtime_records'] });
+      toast.success('Lançamento atualizado com sucesso!');
+    },
+    onError: (error: Error) => {
+      toast.error('Erro ao atualizar lançamento: ' + error.message);
+    },
+  });
+
+  const deleteOvertimeEntry = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('overtime_entries')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['overtime_records'] });
+      toast.success('Lançamento removido com sucesso!');
+    },
+    onError: (error: Error) => {
+      toast.error('Erro ao remover lançamento: ' + error.message);
+    },
+  });
+
   const deleteOvertimeRecord = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -137,6 +174,8 @@ export function useOvertimeRecords() {
     isLoading,
     error,
     addOvertimeRecord,
+    updateOvertimeEntry,
+    deleteOvertimeEntry,
     deleteOvertimeRecord,
   };
 }
