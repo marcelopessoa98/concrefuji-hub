@@ -86,13 +86,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // THEN check for existing session with error handling for corrupted tokens
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        // If there's an error (likely corrupted token), clear the session
+        console.warn('Session error detected, clearing corrupted session:', error.message);
+        supabase.auth.signOut().catch(() => {
+          // If signOut fails, manually clear localStorage
+          localStorage.removeItem('sb-hyelvhwjnkffjehwxbqw-auth-token');
+        });
+        setSession(null);
+        setUser(null);
+        setAuthUser(null);
+        setIsLoading(false);
+        return;
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchUserProfile(session.user.id);
       }
+      setIsLoading(false);
+    }).catch((err) => {
+      // Handle network errors during session check
+      console.warn('Failed to get session, clearing potentially corrupted data:', err);
+      localStorage.removeItem('sb-hyelvhwjnkffjehwxbqw-auth-token');
+      setSession(null);
+      setUser(null);
+      setAuthUser(null);
       setIsLoading(false);
     });
 
