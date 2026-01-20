@@ -23,17 +23,30 @@ export default function Auth() {
     }
 
     setIsLoading(true);
-    const { error } = await signIn(email, password);
-    setIsLoading(false);
+    
+    try {
+      const { error } = await signIn(email, password);
 
-    if (error) {
-      if (error.message.includes('Invalid login credentials')) {
-        toast.error('Email ou senha incorretos');
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error('Email ou senha incorretos');
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('fetch')) {
+          toast.error('Erro de conexão. Verifique sua internet e tente novamente.');
+        } else {
+          toast.error('Erro ao fazer login: ' + error.message);
+        }
       } else {
-        toast.error('Erro ao fazer login: ' + error.message);
+        toast.success('Login realizado com sucesso!');
       }
-    } else {
-      toast.success('Login realizado com sucesso!');
+    } catch (err: any) {
+      // Handle network errors that might throw exceptions
+      if (err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError') || err?.name === 'TypeError') {
+        toast.error('Erro de conexão. Verifique sua internet e tente novamente.');
+      } else {
+        toast.error('Erro inesperado. Tente novamente.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
