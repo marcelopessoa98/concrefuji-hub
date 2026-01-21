@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Plus, Search, Edit, Trash2, User } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Search, Edit, Trash2, User, MapPin } from 'lucide-react';
 import { useEmployees } from '@/hooks/useEmployees';
+import { useBranches } from '@/hooks/useBranches';
 import { useAuth } from '@/contexts/AuthContext';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -25,12 +26,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { format, parseISO } from 'date-fns';
 
 const Employees = () => {
   const { employees, isLoading, addEmployee, updateEmployee, deleteEmployee } = useEmployees();
+  const { branches } = useBranches();
   const { isAdmin } = useAuth();
   const [search, setSearch] = useState('');
+  const [filterBranch, setFilterBranch] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -41,17 +51,22 @@ const Employees = () => {
     role: '',
     department: '',
     admission_date: '',
+    branch_id: '',
   });
 
-  const filteredEmployees = employees.filter((emp) =>
-    emp.name.toLowerCase().includes(search.toLowerCase()) ||
-    emp.role.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredEmployees = useMemo(() => {
+    return employees.filter((emp) => {
+      const matchesSearch = emp.name.toLowerCase().includes(search.toLowerCase()) ||
+        emp.role.toLowerCase().includes(search.toLowerCase());
+      const matchesBranch = filterBranch === 'all' || emp.branch_id === filterBranch;
+      return matchesSearch && matchesBranch;
+    });
+  }, [employees, search, filterBranch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.role || !formData.department || !formData.admission_date) {
+    if (!formData.name || !formData.role || !formData.department || !formData.admission_date || !formData.branch_id) {
       return;
     }
 
@@ -63,6 +78,7 @@ const Employees = () => {
         role: formData.role,
         department: formData.department,
         admission_date: formData.admission_date,
+        branch_id: formData.branch_id,
       });
     } else {
       addEmployee.mutate({
@@ -71,10 +87,11 @@ const Employees = () => {
         role: formData.role,
         department: formData.department,
         admission_date: formData.admission_date,
+        branch_id: formData.branch_id,
       });
     }
 
-    setFormData({ name: '', birth_date: '', role: '', department: '', admission_date: '' });
+    setFormData({ name: '', birth_date: '', role: '', department: '', admission_date: '', branch_id: '' });
     setEditingEmployee(null);
     setIsDialogOpen(false);
   };
@@ -88,6 +105,7 @@ const Employees = () => {
         role: employee.role,
         department: employee.department,
         admission_date: employee.admission_date,
+        branch_id: employee.branch_id,
       });
       setEditingEmployee(id);
       setIsDialogOpen(true);
@@ -100,7 +118,7 @@ const Employees = () => {
   };
 
   const openNewDialog = () => {
-    setFormData({ name: '', birth_date: '', role: '', department: '', admission_date: '' });
+    setFormData({ name: '', birth_date: '', role: '', department: '', admission_date: '', branch_id: '' });
     setEditingEmployee(null);
     setIsDialogOpen(true);
   };
@@ -148,6 +166,24 @@ const Employees = () => {
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="space-y-2">
+                      <Label htmlFor="branch_id">Sede *</Label>
+                      <Select 
+                        value={formData.branch_id} 
+                        onValueChange={(value) => setFormData({ ...formData, branch_id: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a sede" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {branches.map((branch) => (
+                            <SelectItem key={branch.id} value={branch.id}>
+                              {branch.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="name">Nome Completo *</Label>
                       <Input
                         id="name"
@@ -175,7 +211,7 @@ const Employees = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="department">Departamento *</Label>
+                      <Label htmlFor="department">Departamento/Setor *</Label>
                       <Input
                         id="department"
                         value={formData.department}
@@ -207,15 +243,32 @@ const Employees = () => {
           )}
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome ou função..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou função..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="w-full sm:w-48">
+            <Select value={filterBranch} onValueChange={setFilterBranch}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por sede" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as sedes</SelectItem>
+                {branches.map((branch) => (
+                  <SelectItem key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Table */}
@@ -225,16 +278,17 @@ const Employees = () => {
               <thead>
                 <tr className="border-b border-border bg-muted/50">
                   <th className="text-left p-4 font-medium text-muted-foreground">Funcionário</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Departamento</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Sede</th>
                   <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Função</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Admissão</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Departamento</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground hidden xl:table-cell">Admissão</th>
                   {isAdmin && <th className="text-right p-4 font-medium text-muted-foreground">Ações</th>}
                 </tr>
               </thead>
               <tbody>
                 {filteredEmployees.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
                       Nenhum funcionário encontrado
                     </td>
                   </tr>
@@ -252,11 +306,15 @@ const Employees = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="p-4 hidden sm:table-cell text-foreground">
-                        {employee.department}
+                      <td className="p-4 hidden sm:table-cell">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-foreground">{employee.branch_name}</span>
+                        </div>
                       </td>
                       <td className="p-4 hidden md:table-cell text-foreground">{employee.role}</td>
-                      <td className="p-4 hidden lg:table-cell text-foreground">
+                      <td className="p-4 hidden lg:table-cell text-foreground">{employee.department}</td>
+                      <td className="p-4 hidden xl:table-cell text-foreground">
                         {format(parseISO(employee.admission_date), 'dd/MM/yyyy')}
                       </td>
                       {isAdmin && (

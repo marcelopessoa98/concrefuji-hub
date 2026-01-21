@@ -8,9 +8,11 @@ export interface Project {
   name: string;
   address: string | null;
   status: string;
+  branch_id: string;
   created_at: string;
   updated_at: string;
   client_name?: string;
+  branch_name?: string;
 }
 
 export interface ProjectInput {
@@ -18,6 +20,7 @@ export interface ProjectInput {
   name: string;
   address?: string | null;
   status?: string;
+  branch_id: string;
 }
 
 export function useProjects() {
@@ -32,6 +35,9 @@ export function useProjects() {
           *,
           company_clients (
             name
+          ),
+          branches (
+            name
           )
         `)
         .order('name');
@@ -41,6 +47,7 @@ export function useProjects() {
       return data.map((project: any) => ({
         ...project,
         client_name: project.company_clients?.name || '',
+        branch_name: project.branches?.name || '',
       })) as Project[];
     },
   });
@@ -104,6 +111,10 @@ export function useProjects() {
     },
   });
 
+  const getProjectsByBranch = (branchId: string) => {
+    return projects.filter((project) => project.branch_id === branchId);
+  };
+
   return {
     projects,
     isLoading,
@@ -111,5 +122,6 @@ export function useProjects() {
     addProject,
     updateProject,
     deleteProject,
+    getProjectsByBranch,
   };
 }

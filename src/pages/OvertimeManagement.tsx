@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
-import { Edit2, Trash2, Save, X, Clock, Building2, Filter } from 'lucide-react';
+import { Edit2, Trash2, Save, X, Clock, Building2, Filter, MapPin } from 'lucide-react';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useProjects } from '@/hooks/useProjects';
+import { useBranches } from '@/hooks/useBranches';
 import { useOvertimeRecords, OvertimeEntry } from '@/hooks/useOvertimeRecords';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -35,16 +35,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { calculateOvertimeHours, formatOvertimeMinutes, getDayOfWeekName } from '@/lib/overtime';
+import { calculateOvertimeHours, formatOvertimeMinutes } from '@/lib/overtime';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const OvertimeManagement = () => {
   const { employees } = useEmployees();
   const { projects } = useProjects();
-  const { records, isLoading, updateOvertimeEntry, deleteOvertimeEntry, deleteOvertimeRecord } = useOvertimeRecords();
+  const { branches } = useBranches();
+  const { records, isLoading, updateOvertimeEntry, deleteOvertimeEntry } = useOvertimeRecords();
 
   // Filter state
+  const [filterBranch, setFilterBranch] = useState<string>('all');
   const [filterEmployee, setFilterEmployee] = useState<string>('all');
   const [filterMonth, setFilterMonth] = useState<string>('all');
   const [filterYear, setFilterYear] = useState<string>('all');
@@ -78,6 +80,12 @@ const OvertimeManagement = () => {
 
   const years = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() - 2 + i).toString());
 
+  // Filter employees by branch
+  const filteredEmployeesForFilter = useMemo(() => {
+    if (filterBranch === 'all') return employees;
+    return employees.filter((emp) => emp.branch_id === filterBranch);
+  }, [employees, filterBranch]);
+
   const projectOptions = useMemo(() => {
     return projects.map((project) => ({
       value: project.id,
@@ -89,12 +97,13 @@ const OvertimeManagement = () => {
   // Filter records
   const filteredRecords = useMemo(() => {
     return records.filter((record) => {
+      if (filterBranch !== 'all' && record.branch_id !== filterBranch) return false;
       if (filterEmployee !== 'all' && record.employee_id !== filterEmployee) return false;
       if (filterMonth !== 'all' && record.month !== filterMonth) return false;
       if (filterYear !== 'all' && record.year !== filterYear) return false;
       return true;
     });
-  }, [records, filterEmployee, filterMonth, filterYear]);
+  }, [records, filterBranch, filterEmployee, filterMonth, filterYear]);
 
   // Flatten entries with record info
   const allEntries = useMemo(() => {
@@ -104,6 +113,7 @@ const OvertimeManagement = () => {
         employee_name: record.employee_name,
         record_month: record.month,
         record_year: record.year,
+        branch_name: record.branch_name,
       }))
     ).sort((a, b) => b.date.localeCompare(a.date));
   }, [filteredRecords]);
@@ -170,6 +180,12 @@ const OvertimeManagement = () => {
     return formatOvertimeMinutes(minutes);
   };
 
+  // Reset employee filter when branch changes
+  const handleBranchFilterChange = (value: string) => {
+    setFilterBranch(value);
+    setFilterEmployee('all');
+  };
+
   if (isLoading) {
     return (
       <MainLayout>
@@ -197,7 +213,26 @@ const OvertimeManagement = () => {
             <Filter className="w-5 h-5 text-muted-foreground" />
             <h2 className="font-semibold text-foreground">Filtros</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                Sede
+              </Label>
+              <Select value={filterBranch} onValueChange={handleBranchFilterChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>Funcionário</Label>
               <Select value={filterEmployee} onValueChange={setFilterEmployee}>
@@ -206,7 +241,7 @@ const OvertimeManagement = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  {employees.map((emp) => (
+                  {filteredEmployeesForFilter.map((emp) => (
                     <SelectItem key={emp.id} value={emp.id}>
                       {emp.name}
                     </SelectItem>
@@ -220,7 +255,7 @@ const OvertimeManagement = () => {
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-60">
                   <SelectItem value="all">Todos</SelectItem>
                   {months.map((month) => (
                     <SelectItem key={month.value} value={month.value}>
