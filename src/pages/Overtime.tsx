@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Save, Clock, User, Building2 } from 'lucide-react';
+import { Plus, Trash2, Save, Clock, User, Building2, MapPin } from 'lucide-react';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useProjects } from '@/hooks/useProjects';
+import { useBranches } from '@/hooks/useBranches';
 import { useOvertimeRecords } from '@/hooks/useOvertimeRecords';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -32,8 +33,10 @@ interface OvertimeFormEntry {
 const Overtime = () => {
   const { employees } = useEmployees();
   const { projects } = useProjects();
+  const { branches } = useBranches();
   const { addOvertimeRecord } = useOvertimeRecords();
   
+  const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
@@ -66,14 +69,26 @@ const Overtime = () => {
 
   const years = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() - 2 + i).toString());
 
+  // Filter employees by selected branch
+  const filteredEmployees = useMemo(() => {
+    if (!selectedBranch) return [];
+    return employees.filter((emp) => emp.branch_id === selectedBranch);
+  }, [employees, selectedBranch]);
+
+  // Filter projects by selected branch
+  const filteredProjects = useMemo(() => {
+    if (!selectedBranch) return [];
+    return projects.filter((project) => project.branch_id === selectedBranch);
+  }, [projects, selectedBranch]);
+
   // Prepare project options for combobox
   const projectOptions = useMemo(() => {
-    return projects.map((project) => ({
+    return filteredProjects.map((project) => ({
       value: project.id,
       label: project.name,
       sublabel: project.client_name,
     }));
-  }, [projects]);
+  }, [filteredProjects]);
 
   const addEntry = () => {
     setEntries([
@@ -118,8 +133,8 @@ const Overtime = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedEmployee || !selectedMonth || !selectedYear) {
-      toast.error('Preencha o funcionário, mês e ano');
+    if (!selectedBranch || !selectedEmployee || !selectedMonth || !selectedYear) {
+      toast.error('Preencha a sede, funcionário, mês e ano');
       return;
     }
 
@@ -153,6 +168,7 @@ const Overtime = () => {
       employee_name: employee.name,
       month: selectedMonth,
       year: selectedYear,
+      branch_id: selectedBranch,
       entries: formattedEntries,
     });
     
@@ -172,6 +188,14 @@ const Overtime = () => {
     ]);
   };
 
+  // Reset employee when branch changes
+  const handleBranchChange = (branchId: string) => {
+    setSelectedBranch(branchId);
+    setSelectedEmployee('');
+    // Reset project selections in entries
+    setEntries(entries.map(entry => ({ ...entry, projectId: '' })));
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -184,20 +208,42 @@ const Overtime = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Employee and Period Selection */}
+          {/* Branch, Employee and Period Selection */}
           <div className="bg-card rounded-xl border border-border p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  Sede *
+                </Label>
+                <Select value={selectedBranch} onValueChange={handleBranchChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a sede" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <User className="w-4 h-4" />
                   Funcionário *
                 </Label>
-                <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                <Select 
+                  value={selectedEmployee} 
+                  onValueChange={setSelectedEmployee}
+                  disabled={!selectedBranch}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o funcionário" />
+                    <SelectValue placeholder={selectedBranch ? "Selecione o funcionário" : "Selecione a sede primeiro"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {employees.map((employee) => (
+                    {filteredEmployees.map((employee) => (
                       <SelectItem key={employee.id} value={employee.id}>
                         {employee.name}
                       </SelectItem>
@@ -211,7 +257,7 @@ const Overtime = () => {
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o mês" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-60">
                     {months.map((month) => (
                       <SelectItem key={month.value} value={month.value}>
                         {month.label}
@@ -240,15 +286,9 @@ const Overtime = () => {
 
           {/* Entries */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-display font-semibold text-lg text-foreground">
-                Lançamentos de Horas Extras
-              </h2>
-              <Button type="button" variant="outline" onClick={addEntry}>
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Lançamento
-              </Button>
-            </div>
+            <h2 className="font-display font-semibold text-lg text-foreground">
+              Lançamentos de Horas Extras
+            </h2>
 
             {entries.map((entry, index) => (
               <div
@@ -288,7 +328,7 @@ const Overtime = () => {
                       options={projectOptions}
                       value={entry.projectId}
                       onValueChange={(value) => updateEntry(entry.id, 'projectId', value)}
-                      placeholder="Digite para buscar..."
+                      placeholder={selectedBranch ? "Digite para buscar..." : "Selecione a sede primeiro"}
                       searchPlaceholder="Buscar obra..."
                       emptyText="Nenhuma obra encontrada."
                     />
@@ -360,6 +400,12 @@ const Overtime = () => {
                 </div>
               </div>
             ))}
+
+            {/* Add Entry Button at bottom */}
+            <Button type="button" variant="outline" onClick={addEntry} className="w-full">
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Novo Lançamento
+            </Button>
           </div>
 
           {/* Submit */}

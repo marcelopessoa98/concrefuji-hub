@@ -6,13 +6,16 @@ export interface CompanyClient {
   id: string;
   name: string;
   contact: string | null;
+  branch_id: string;
   created_at: string;
   updated_at: string;
+  branch_name?: string;
 }
 
 export interface CompanyClientInput {
   name: string;
   contact?: string | null;
+  branch_id: string;
 }
 
 export function useCompanyClients() {
@@ -23,11 +26,19 @@ export function useCompanyClients() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('company_clients')
-        .select('*')
+        .select(`
+          *,
+          branches (
+            name
+          )
+        `)
         .order('name');
 
       if (error) throw error;
-      return data as CompanyClient[];
+      return data.map((client: any) => ({
+        ...client,
+        branch_name: client.branches?.name || '',
+      })) as CompanyClient[];
     },
   });
 
@@ -91,6 +102,10 @@ export function useCompanyClients() {
     },
   });
 
+  const getClientsByBranch = (branchId: string) => {
+    return companyClients.filter((client) => client.branch_id === branchId);
+  };
+
   return {
     companyClients,
     isLoading,
@@ -98,5 +113,6 @@ export function useCompanyClients() {
     addCompanyClient,
     updateCompanyClient,
     deleteCompanyClient,
+    getClientsByBranch,
   };
 }

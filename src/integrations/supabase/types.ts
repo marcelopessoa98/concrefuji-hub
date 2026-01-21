@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      branches: {
+        Row: {
+          city: string
+          created_at: string
+          id: string
+          name: string
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          id?: string
+          name: string
+          state: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          id?: string
+          name?: string
+          state?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           address: string | null
@@ -49,6 +76,7 @@ export type Database = {
       }
       company_clients: {
         Row: {
+          branch_id: string
           contact: string | null
           created_at: string
           id: string
@@ -56,6 +84,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          branch_id: string
           contact?: string | null
           created_at?: string
           id?: string
@@ -63,18 +92,28 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          branch_id?: string
           contact?: string | null
           created_at?: string
           id?: string
           name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "company_clients_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       employees: {
         Row: {
           admission_date: string
           birth_date: string | null
+          branch_id: string
           created_at: string
           department: string
           id: string
@@ -86,6 +125,7 @@ export type Database = {
         Insert: {
           admission_date: string
           birth_date?: string | null
+          branch_id: string
           created_at?: string
           department: string
           id?: string
@@ -97,6 +137,7 @@ export type Database = {
         Update: {
           admission_date?: string
           birth_date?: string | null
+          branch_id?: string
           created_at?: string
           department?: string
           id?: string
@@ -105,7 +146,15 @@ export type Database = {
           role?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "employees_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -201,6 +250,7 @@ export type Database = {
       }
       overtime_records: {
         Row: {
+          branch_id: string
           created_at: string
           employee_id: string
           employee_name: string
@@ -209,6 +259,7 @@ export type Database = {
           year: string
         }
         Insert: {
+          branch_id: string
           created_at?: string
           employee_id: string
           employee_name: string
@@ -217,6 +268,7 @@ export type Database = {
           year: string
         }
         Update: {
+          branch_id?: string
           created_at?: string
           employee_id?: string
           employee_name?: string
@@ -225,6 +277,13 @@ export type Database = {
           year?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "overtime_records_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "overtime_records_employee_id_fkey"
             columns: ["employee_id"]
@@ -264,6 +323,7 @@ export type Database = {
       projects: {
         Row: {
           address: string | null
+          branch_id: string
           client_id: string
           created_at: string
           id: string
@@ -273,6 +333,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          branch_id: string
           client_id: string
           created_at?: string
           id?: string
@@ -282,6 +343,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          branch_id?: string
           client_id?: string
           created_at?: string
           id?: string
@@ -290,6 +352,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_client_id_fkey"
             columns: ["client_id"]

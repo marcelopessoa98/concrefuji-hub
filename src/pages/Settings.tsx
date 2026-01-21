@@ -127,7 +127,7 @@ const Settings = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">Versão do Sistema</p>
-              <p className="font-medium text-foreground">1.0.0</p>
+              <p className="font-medium text-foreground">2.0.0</p>
             </div>
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">Desenvolvido por</p>

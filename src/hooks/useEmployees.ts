@@ -10,8 +10,10 @@ export interface Employee {
   admission_date: string;
   birth_date: string | null;
   photo_url: string | null;
+  branch_id: string;
   created_at: string;
   updated_at: string;
+  branch_name?: string;
 }
 
 export interface EmployeeInput {
@@ -21,6 +23,7 @@ export interface EmployeeInput {
   admission_date: string;
   birth_date?: string | null;
   photo_url?: string | null;
+  branch_id: string;
 }
 
 export function useEmployees() {
@@ -31,11 +34,19 @@ export function useEmployees() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('employees')
-        .select('*')
+        .select(`
+          *,
+          branches (
+            name
+          )
+        `)
         .order('name');
 
       if (error) throw error;
-      return data as Employee[];
+      return data.map((emp: any) => ({
+        ...emp,
+        branch_name: emp.branches?.name || '',
+      })) as Employee[];
     },
   });
 
@@ -107,6 +118,10 @@ export function useEmployees() {
     });
   };
 
+  const getEmployeesByBranch = (branchId: string) => {
+    return employees.filter((emp) => emp.branch_id === branchId);
+  };
+
   return {
     employees,
     isLoading,
@@ -115,5 +130,6 @@ export function useEmployees() {
     updateEmployee,
     deleteEmployee,
     getBirthdaysThisMonth,
+    getEmployeesByBranch,
   };
 }

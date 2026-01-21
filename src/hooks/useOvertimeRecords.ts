@@ -21,8 +21,10 @@ export interface OvertimeRecord {
   employee_name: string;
   month: string;
   year: string;
+  branch_id: string;
   created_at: string;
   entries?: OvertimeEntry[];
+  branch_name?: string;
 }
 
 export interface OvertimeRecordInput {
@@ -30,6 +32,7 @@ export interface OvertimeRecordInput {
   employee_name: string;
   month: string;
   year: string;
+  branch_id: string;
   entries: {
     date: string;
     project_id: string | null;
@@ -49,14 +52,19 @@ export function useOvertimeRecords() {
     queryFn: async () => {
       const { data: recordsData, error: recordsError } = await supabase
         .from('overtime_records')
-        .select('*')
+        .select(`
+          *,
+          branches (
+            name
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (recordsError) throw recordsError;
 
       // Fetch entries for each record
       const recordsWithEntries = await Promise.all(
-        (recordsData as OvertimeRecord[]).map(async (record) => {
+        (recordsData as any[]).map(async (record) => {
           const { data: entries, error: entriesError } = await supabase
             .from('overtime_entries')
             .select('*')
@@ -66,12 +74,13 @@ export function useOvertimeRecords() {
 
           return {
             ...record,
+            branch_name: record.branches?.name || '',
             entries: entries as OvertimeEntry[],
           };
         })
       );
 
-      return recordsWithEntries;
+      return recordsWithEntries as OvertimeRecord[];
     },
   });
 
@@ -85,6 +94,7 @@ export function useOvertimeRecords() {
           employee_name: input.employee_name,
           month: input.month,
           year: input.year,
+          branch_id: input.branch_id,
         }])
         .select()
         .single();
@@ -169,6 +179,10 @@ export function useOvertimeRecords() {
     },
   });
 
+  const getRecordsByBranch = (branchId: string) => {
+    return records.filter((record) => record.branch_id === branchId);
+  };
+
   return {
     records,
     isLoading,
@@ -177,5 +191,6 @@ export function useOvertimeRecords() {
     updateOvertimeEntry,
     deleteOvertimeEntry,
     deleteOvertimeRecord,
+    getRecordsByBranch,
   };
 }

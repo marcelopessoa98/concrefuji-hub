@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import Projects from "./pages/Projects";
+import Branches from "./pages/Branches";
 import Overtime from "./pages/Overtime";
 import OvertimeManagement from "./pages/OvertimeManagement";
 import Reports from "./pages/Reports";
@@ -62,6 +63,7 @@ function AppRoutes() {
       <Route path="/login" element={<Navigate to="/auth" replace />} />
       <Route path="/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/branches" element={<ProtectedRoute><Branches /></ProtectedRoute>} />
       <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
       <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
       <Route path="/overtime" element={<ProtectedRoute><Overtime /></ProtectedRoute>} />

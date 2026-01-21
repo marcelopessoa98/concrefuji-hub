@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Plus, Search, Edit, Trash2, Building2, Users, ChevronDown, ChevronRight } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Search, Edit, Trash2, Building2, Users, ChevronDown, ChevronRight, MapPin } from 'lucide-react';
 import { useCompanyClients } from '@/hooks/useCompanyClients';
 import { useProjects } from '@/hooks/useProjects';
+import { useBranches } from '@/hooks/useBranches';
 import { useAuth } from '@/contexts/AuthContext';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -41,21 +42,23 @@ import {
 const Projects = () => {
   const { companyClients, isLoading: isLoadingClients, addCompanyClient, updateCompanyClient, deleteCompanyClient } = useCompanyClients();
   const { projects, isLoading: isLoadingProjects, addProject, updateProject, deleteProject } = useProjects();
+  const { branches } = useBranches();
   const { isAdmin } = useAuth();
   
   const [search, setSearch] = useState('');
+  const [filterBranch, setFilterBranch] = useState<string>('all');
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   
   // Client dialog
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<string | null>(null);
-  const [clientFormData, setClientFormData] = useState({ name: '', contact: '' });
+  const [clientFormData, setClientFormData] = useState({ name: '', contact: '', branch_id: '' });
   
   // Project dialog
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<string | null>(null);
   const [selectedClientForProject, setSelectedClientForProject] = useState<string>('');
-  const [projectFormData, setProjectFormData] = useState({ name: '', address: '' });
+  const [projectFormData, setProjectFormData] = useState({ name: '', address: '', branch_id: '', reference: '' });
   
   // Delete confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'client' | 'project'; id: string } | null>(null);
@@ -70,18 +73,27 @@ const Projects = () => {
     setExpandedClients(newExpanded);
   };
 
-  // Filter clients based on search
-  const filteredClients = companyClients.filter((client) => {
-    const clientProjects = projects.filter((p) => p.client_id === client.id);
-    const matchesClient = client.name.toLowerCase().includes(search.toLowerCase());
-    const matchesProject = clientProjects.some((p) => p.name.toLowerCase().includes(search.toLowerCase()));
-    return matchesClient || matchesProject;
-  });
+  // Filter clients based on search and branch
+  const filteredClients = useMemo(() => {
+    return companyClients.filter((client) => {
+      const clientProjects = projects.filter((p) => p.client_id === client.id);
+      const matchesClient = client.name.toLowerCase().includes(search.toLowerCase());
+      const matchesProject = clientProjects.some((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+      const matchesBranch = filterBranch === 'all' || client.branch_id === filterBranch;
+      return (matchesClient || matchesProject) && matchesBranch;
+    });
+  }, [companyClients, projects, search, filterBranch]);
+
+  // Get clients filtered by selected branch in project form
+  const clientsForProjectForm = useMemo(() => {
+    if (!projectFormData.branch_id) return [];
+    return companyClients.filter((c) => c.branch_id === projectFormData.branch_id);
+  }, [companyClients, projectFormData.branch_id]);
 
   // Client handlers
   const handleClientSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientFormData.name) return;
+    if (!clientFormData.name || !clientFormData.branch_id) return;
 
     if (editingClient) {
       updateCompanyClient.mutate({ id: editingClient, ...clientFormData });
@@ -89,7 +101,7 @@ const Projects = () => {
       addCompanyClient.mutate(clientFormData);
     }
 
-    setClientFormData({ name: '', contact: '' });
+    setClientFormData({ name: '', contact: '', branch_id: '' });
     setEditingClient(null);
     setIsClientDialogOpen(false);
   };
@@ -97,14 +109,14 @@ const Projects = () => {
   const handleEditClient = (id: string) => {
     const client = companyClients.find((c) => c.id === id);
     if (client) {
-      setClientFormData({ name: client.name, contact: client.contact || '' });
+      setClientFormData({ name: client.name, contact: client.contact || '', branch_id: client.branch_id });
       setEditingClient(id);
       setIsClientDialogOpen(true);
     }
   };
 
   const openNewClientDialog = () => {
-    setClientFormData({ name: '', contact: '' });
+    setClientFormData({ name: '', contact: '', branch_id: '' });
     setEditingClient(null);
     setIsClientDialogOpen(true);
   };
@@ -112,29 +124,40 @@ const Projects = () => {
   // Project handlers
   const handleProjectSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!projectFormData.name || !selectedClientForProject) return;
+    if (!projectFormData.name || !selectedClientForProject || !projectFormData.branch_id) return;
 
     if (editingProject) {
-      updateProject.mutate({ id: editingProject, client_id: selectedClientForProject, ...projectFormData });
+      updateProject.mutate({ 
+        id: editingProject, 
+        client_id: selectedClientForProject, 
+        name: projectFormData.name,
+        address: projectFormData.address || null,
+        branch_id: projectFormData.branch_id,
+      });
     } else {
-      addProject.mutate({ client_id: selectedClientForProject, ...projectFormData });
+      addProject.mutate({ 
+        client_id: selectedClientForProject, 
+        name: projectFormData.name,
+        address: projectFormData.address || null,
+        branch_id: projectFormData.branch_id,
+      });
     }
 
-    setProjectFormData({ name: '', address: '' });
+    setProjectFormData({ name: '', address: '', branch_id: '', reference: '' });
     setSelectedClientForProject('');
     setEditingProject(null);
     setIsProjectDialogOpen(false);
   };
 
-  const handleEditProject = (project: { id: string; client_id: string; name: string; address: string | null }) => {
-    setProjectFormData({ name: project.name, address: project.address || '' });
+  const handleEditProject = (project: { id: string; client_id: string; name: string; address: string | null; branch_id: string }) => {
+    setProjectFormData({ name: project.name, address: project.address || '', branch_id: project.branch_id, reference: '' });
     setSelectedClientForProject(project.client_id);
     setEditingProject(project.id);
     setIsProjectDialogOpen(true);
   };
 
-  const openNewProjectDialog = (clientId?: string) => {
-    setProjectFormData({ name: '', address: '' });
+  const openNewProjectDialog = (clientId?: string, branchId?: string) => {
+    setProjectFormData({ name: '', address: '', branch_id: branchId || '', reference: '' });
     setSelectedClientForProject(clientId || '');
     setEditingProject(null);
     setIsProjectDialogOpen(true);
@@ -187,15 +210,32 @@ const Projects = () => {
           )}
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por cliente ou obra..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por cliente ou obra..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="w-full sm:w-48">
+            <Select value={filterBranch} onValueChange={setFilterBranch}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por sede" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as sedes</SelectItem>
+                {branches.map((branch) => (
+                  <SelectItem key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Clients List */}
@@ -227,8 +267,9 @@ const Projects = () => {
                             <h3 className="font-display font-semibold text-foreground">
                               {client.name}
                             </h3>
-                            <p className="text-sm text-muted-foreground">
-                              {clientProjects.length} obra{clientProjects.length !== 1 ? 's' : ''} cadastrada{clientProjects.length !== 1 ? 's' : ''}
+                            <p className="text-sm text-muted-foreground flex items-center gap-2">
+                              <MapPin className="w-3 h-3" />
+                              {client.branch_name} • {clientProjects.length} obra{clientProjects.length !== 1 ? 's' : ''}
                               {client.contact && ` • ${client.contact}`}
                             </p>
                           </div>
@@ -247,7 +288,7 @@ const Projects = () => {
                             size="icon"
                             onClick={(e) => {
                               e.stopPropagation();
-                              openNewProjectDialog(client.id);
+                              openNewProjectDialog(client.id, client.branch_id);
                             }}
                             title="Adicionar obra"
                           >
@@ -362,7 +403,25 @@ const Projects = () => {
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="client_name">Nome do Cliente *</Label>
+                  <Label htmlFor="client_branch">Sede *</Label>
+                  <Select 
+                    value={clientFormData.branch_id} 
+                    onValueChange={(value) => setClientFormData({ ...clientFormData, branch_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a sede" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branches.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id}>
+                          {branch.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="client_name">Nome do Cliente/Empresa *</Label>
                   <Input
                     id="client_name"
                     value={clientFormData.name}
@@ -408,13 +467,38 @@ const Projects = () => {
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="project_client">Cliente *</Label>
-                  <Select value={selectedClientForProject} onValueChange={setSelectedClientForProject}>
+                  <Label htmlFor="project_branch">Sede *</Label>
+                  <Select 
+                    value={projectFormData.branch_id} 
+                    onValueChange={(value) => {
+                      setProjectFormData({ ...projectFormData, branch_id: value });
+                      setSelectedClientForProject(''); // Reset client when branch changes
+                    }}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o cliente" />
+                      <SelectValue placeholder="Selecione a sede" />
                     </SelectTrigger>
                     <SelectContent>
-                      {companyClients.map((client) => (
+                      {branches.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id}>
+                          {branch.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="project_client">Cliente *</Label>
+                  <Select 
+                    value={selectedClientForProject} 
+                    onValueChange={setSelectedClientForProject}
+                    disabled={!projectFormData.branch_id}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={projectFormData.branch_id ? "Selecione o cliente" : "Selecione a sede primeiro"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clientsForProjectForm.map((client) => (
                         <SelectItem key={client.id} value={client.id}>
                           {client.name}
                         </SelectItem>
@@ -429,6 +513,15 @@ const Projects = () => {
                     value={projectFormData.name}
                     onChange={(e) => setProjectFormData({ ...projectFormData, name: e.target.value })}
                     placeholder="Nome da obra"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="project_reference">Referência</Label>
+                  <Input
+                    id="project_reference"
+                    value={projectFormData.reference}
+                    onChange={(e) => setProjectFormData({ ...projectFormData, reference: e.target.value })}
+                    placeholder="Referência da obra"
                   />
                 </div>
                 <div className="space-y-2">
@@ -460,7 +553,7 @@ const Projects = () => {
               <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
               <AlertDialogDescription>
                 {deleteConfirm?.type === 'client'
-                  ? 'Tem certeza que deseja excluir este cliente? Todas as obras associadas também serão excluídas. Esta ação não pode ser desfeita.'
+                  ? 'Tem certeza que deseja excluir este cliente? Todas as obras associadas também serão removidas.'
                   : 'Tem certeza que deseja excluir esta obra? Esta ação não pode ser desfeita.'}
               </AlertDialogDescription>
             </AlertDialogHeader>
