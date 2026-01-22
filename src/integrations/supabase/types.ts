@@ -199,36 +199,45 @@ export type Database = {
           created_at: string
           date: string
           end_time: string
+          end_time_2: string | null
           id: string
+          lunch_worked: boolean
           observation: string | null
           overtime_record_id: string
           project_id: string | null
           project_name: string
           start_time: string
+          start_time_2: string | null
           type: string
         }
         Insert: {
           created_at?: string
           date: string
           end_time: string
+          end_time_2?: string | null
           id?: string
+          lunch_worked?: boolean
           observation?: string | null
           overtime_record_id: string
           project_id?: string | null
           project_name: string
           start_time: string
+          start_time_2?: string | null
           type?: string
         }
         Update: {
           created_at?: string
           date?: string
           end_time?: string
+          end_time_2?: string | null
           id?: string
+          lunch_worked?: boolean
           observation?: string | null
           overtime_record_id?: string
           project_id?: string | null
           project_name?: string
           start_time?: string
+          start_time_2?: string | null
           type?: string
         }
         Relationships: [
