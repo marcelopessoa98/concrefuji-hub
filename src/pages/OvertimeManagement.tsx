@@ -175,8 +175,13 @@ const OvertimeManagement = () => {
     }
   };
 
-  const getOvertimeDisplay = (date: string, start: string, end: string) => {
-    const minutes = calculateOvertimeHours(date, start, end);
+  const getOvertimeDisplay = (entry: any) => {
+    const minutes = calculateOvertimeHours(entry.date, entry.start_time, entry.end_time, {
+      branchName: entry.branch_name,
+      lunchWorked: !!entry.lunch_worked,
+      startTime2: entry.start_time_2 || null,
+      endTime2: entry.end_time_2 || null,
+    });
     return formatOvertimeMinutes(minutes);
   };
 
@@ -362,7 +367,9 @@ const OvertimeManagement = () => {
                             </Select>
                           </TableCell>
                           <TableCell className="font-medium text-primary">
-                            {getOvertimeDisplay(editForm.date, editForm.start_time, editForm.end_time)}
+                            {formatOvertimeMinutes(
+                              calculateOvertimeHours(editForm.date, editForm.start_time, editForm.end_time)
+                            )}
                           </TableCell>
                           <TableCell>
                             <Input
@@ -405,7 +412,7 @@ const OvertimeManagement = () => {
                             </span>
                           </TableCell>
                           <TableCell className="font-medium text-primary">
-                            {getOvertimeDisplay(entry.date, entry.start_time, entry.end_time)}
+                            {getOvertimeDisplay(entry)}
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm max-w-[150px] truncate">
                             {entry.observation || '-'}

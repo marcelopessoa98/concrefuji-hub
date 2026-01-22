@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Combobox } from '@/components/ui/combobox';
+import { Checkbox } from '@/components/ui/checkbox';
 import { calculateOvertimeHours, formatOvertimeMinutes, getDayOfWeekName } from '@/lib/overtime';
 import { toast } from 'sonner';
 
@@ -26,6 +27,9 @@ interface OvertimeFormEntry {
   projectId: string;
   startTime: string;
   endTime: string;
+  startTime2?: string;
+  endTime2?: string;
+  lunchWorked?: boolean;
   type: 'remunerada' | 'banco_de_horas';
   observation: string;
 }
@@ -47,6 +51,9 @@ const Overtime = () => {
       projectId: '',
       startTime: '',
       endTime: '',
+      startTime2: '',
+      endTime2: '',
+      lunchWorked: false,
       type: 'remunerada',
       observation: '',
     },
@@ -99,6 +106,9 @@ const Overtime = () => {
         projectId: '',
         startTime: '',
         endTime: '',
+        startTime2: '',
+        endTime2: '',
+        lunchWorked: false,
         type: 'remunerada',
         observation: '',
       },
@@ -113,15 +123,29 @@ const Overtime = () => {
     setEntries(entries.filter((e) => e.id !== id));
   };
 
-  const updateEntry = (id: string, field: keyof OvertimeFormEntry, value: string) => {
+  const updateEntry = (id: string, field: keyof OvertimeFormEntry, value: any) => {
     setEntries(
       entries.map((e) => (e.id === id ? { ...e, [field]: value } : e))
     );
   };
 
-  const calculateTotalOvertimeHours = (date: string, start: string, end: string) => {
-    if (!date || !start || !end) return '0h 0m';
-    const overtimeMinutes = calculateOvertimeHours(date, start, end);
+  const selectedBranchName = useMemo(() => {
+    return branches.find((b) => b.id === selectedBranch)?.name || '';
+  }, [branches, selectedBranch]);
+
+  const isSaoLuis = useMemo(() => {
+    const n = selectedBranchName.toLowerCase();
+    return n.includes('são lu') || n.includes('sao lu');
+  }, [selectedBranchName]);
+
+  const calculateTotalOvertimeHours = (entry: OvertimeFormEntry) => {
+    if (!entry.date || !entry.startTime || !entry.endTime) return '0h 0m';
+    const overtimeMinutes = calculateOvertimeHours(entry.date, entry.startTime, entry.endTime, {
+      branchName: selectedBranchName,
+      lunchWorked: !!entry.lunchWorked,
+      startTime2: entry.startTime2 || null,
+      endTime2: entry.endTime2 || null,
+    });
     return formatOvertimeMinutes(overtimeMinutes);
   };
 
@@ -138,9 +162,11 @@ const Overtime = () => {
       return;
     }
 
-    const invalidEntries = entries.filter(
-      (entry) => !entry.date || !entry.projectId || !entry.startTime || !entry.endTime
-    );
+    const invalidEntries = entries.filter((entry) => {
+      if (!entry.date || !entry.projectId || !entry.startTime || !entry.endTime) return true;
+      if (isSaoLuis && (!entry.startTime2 || !entry.endTime2)) return true;
+      return false;
+    });
 
     if (invalidEntries.length > 0) {
       toast.error('Preencha todos os campos obrigatórios das entradas');
@@ -158,6 +184,9 @@ const Overtime = () => {
         project_name: project?.name || '',
         start_time: entry.startTime,
         end_time: entry.endTime,
+        start_time_2: isSaoLuis ? (entry.startTime2 || null) : null,
+        end_time_2: isSaoLuis ? (entry.endTime2 || null) : null,
+        lunch_worked: isSaoLuis ? !!entry.lunchWorked : !!entry.lunchWorked,
         type: entry.type,
         observation: entry.observation || null,
       };
@@ -182,6 +211,9 @@ const Overtime = () => {
         projectId: '',
         startTime: '',
         endTime: '',
+        startTime2: '',
+        endTime2: '',
+        lunchWorked: false,
         type: 'remunerada',
         observation: '',
       },
@@ -360,7 +392,7 @@ const Overtime = () => {
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Clock className="w-4 h-4" />
-                      Hora de Entrada *
+                      {isSaoLuis ? 'Entrada 1 *' : 'Hora de Entrada *'}
                     </Label>
                     <Input
                       type="time"
@@ -372,7 +404,7 @@ const Overtime = () => {
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Clock className="w-4 h-4" />
-                      Hora de Saída *
+                      {isSaoLuis ? 'Saída 1 *' : 'Hora de Saída *'}
                     </Label>
                     <Input
                       type="time"
@@ -381,10 +413,51 @@ const Overtime = () => {
                     />
                   </div>
 
+                  {isSaoLuis && (
+                    <>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          Entrada 2 *
+                        </Label>
+                        <Input
+                          type="time"
+                          value={entry.startTime2 || ''}
+                          onChange={(e) => updateEntry(entry.id, 'startTime2', e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          Saída 2 *
+                        </Label>
+                        <Input
+                          type="time"
+                          value={entry.endTime2 || ''}
+                          onChange={(e) => updateEntry(entry.id, 'endTime2', e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Trabalhou no almoço?</Label>
+                    <div className="h-10 px-3 py-2 rounded-lg border border-border flex items-center gap-3">
+                      <Checkbox
+                        checked={!!entry.lunchWorked}
+                        onCheckedChange={(checked) => updateEntry(entry.id, 'lunchWorked', checked === true)}
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {isSaoLuis ? 'Soma almoço conforme a sede' : '+1h (Seg–Sex)'}
+                      </span>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label>Total Hora Extra</Label>
                     <div className="h-10 px-3 py-2 rounded-lg bg-primary/10 text-primary font-bold flex items-center">
-                      {calculateTotalOvertimeHours(entry.date, entry.startTime, entry.endTime)}
+                      {calculateTotalOvertimeHours(entry)}
                     </div>
                   </div>
 

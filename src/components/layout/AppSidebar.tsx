@@ -32,7 +32,7 @@ import logo from '@/assets/logo.png';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-  { icon: MapPin, label: 'Sedes', path: '/branches', adminOnly: true },
+  { icon: MapPin, label: 'Sedes', path: '/branches' },
   { icon: Users, label: 'Funcionários', path: '/employees' },
   { icon: Building2, label: 'Obras', path: '/projects' },
   { icon: Clock, label: 'Lançar HE', path: '/overtime' },
