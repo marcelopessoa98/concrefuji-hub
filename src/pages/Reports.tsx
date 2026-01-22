@@ -64,7 +64,11 @@ const Reports = () => {
   };
 
   const calculateEntryOvertimeMinutes = (entry: any) => {
-    return calculateOvertimeHours(entry.date, entry.start_time, entry.end_time);
+    return calculateOvertimeHours(entry.date, entry.start_time, entry.end_time, {
+      lunchWorked: !!entry.lunch_worked,
+      startTime2: entry.start_time_2 || null,
+      endTime2: entry.end_time_2 || null,
+    });
   };
 
   const formatHours = (minutes: number) => {
