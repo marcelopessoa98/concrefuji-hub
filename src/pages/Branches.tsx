@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { Plus, Search, Edit, Trash2, MapPin } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Search, Edit, Trash2, MapPin, Users, Building2, Clock } from 'lucide-react';
 import { useBranches } from '@/hooks/useBranches';
+import { useEmployees } from '@/hooks/useEmployees';
+import { useCompanyClients } from '@/hooks/useCompanyClients';
 import { useAuth } from '@/contexts/AuthContext';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -33,7 +35,9 @@ const BRAZILIAN_STATES = [
 ];
 
 const Branches = () => {
-  const { branches, isLoading, addBranch, updateBranch, deleteBranch } = useBranches();
+  const { branches, isLoading: isLoadingBranches, addBranch, updateBranch, deleteBranch } = useBranches();
+  const { employees, isLoading: isLoadingEmployees } = useEmployees();
+  const { companyClients, isLoading: isLoadingClients } = useCompanyClients();
   const { isAdmin } = useAuth();
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -45,6 +49,20 @@ const Branches = () => {
     city: '',
     state: '',
   });
+
+  const isLoading = isLoadingBranches || isLoadingEmployees || isLoadingClients;
+
+  // Count employees and clients by branch
+  const branchStats = useMemo(() => {
+    const stats: Record<string, { employees: number; clients: number }> = {};
+    branches.forEach(branch => {
+      stats[branch.id] = {
+        employees: employees.filter(emp => emp.branch_id === branch.id).length,
+        clients: companyClients.filter(client => client.branch_id === branch.id).length,
+      };
+    });
+    return stats;
+  }, [branches, employees, companyClients]);
 
   const filteredBranches = branches.filter((branch) =>
     branch.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -210,46 +228,71 @@ const Branches = () => {
               Nenhuma sede encontrada
             </div>
           ) : (
-            filteredBranches.map((branch) => (
-              <div
-                key={branch.id}
-                className="bg-card rounded-xl border border-border p-6 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <MapPin className="w-6 h-6 text-primary" />
+            filteredBranches.map((branch) => {
+              const stats = branchStats[branch.id] || { employees: 0, clients: 0 };
+              return (
+                <div
+                  key={branch.id}
+                  className="bg-card rounded-xl border border-border p-6 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <MapPin className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-display font-semibold text-foreground">
+                          {branch.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {branch.city}, {branch.state}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-display font-semibold text-foreground">
-                        {branch.name}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {branch.city}, {branch.state}
-                      </p>
+                    {isAdmin && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(branch.id)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteConfirm(branch.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border">
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
+                        <Users className="w-4 h-4 text-secondary-foreground" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{stats.employees}</p>
+                        <p className="text-xs text-muted-foreground">Funcionários</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                        <Building2 className="w-4 h-4 text-accent" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{stats.clients}</p>
+                        <p className="text-xs text-muted-foreground">Clientes</p>
+                      </div>
                     </div>
                   </div>
-                  {isAdmin && (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(branch.id)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteConfirm(branch.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  )}
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
